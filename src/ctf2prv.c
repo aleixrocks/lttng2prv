@@ -20,6 +20,8 @@
 #include <babeltrace/ctf/callbacks.h>
 #include <babeltrace/ctf/iterator.h>
 
+#include <babeltrace/format.h>
+
 //#include <babeltrace/ctf-writer/event.h>
 //#include <babeltrace/ctf-writer/event-types.h>
 //#include <babeltrace/ctf-writer/event-fields.h>
@@ -248,12 +250,11 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp)
 	const struct bt_definition *scope;
 	int ret = 0;
 	int flags;
-	struct bt_definition **field_list;
-	uint64_t cpu_id, appl_id, task_id, thread_id, init_time, state;
-	struct bt_ctf_stream *stream;
-	struct bt_ctf_field *packet_context;
-	struct bt_ctf_field *fcpu_id;
-	unsigned int *fcnt;
+	uint64_t first_event_timestamp = -1;
+	uint64_t appl_id, task_id, thread_id, init_time, end_time, state, event_time;
+	uint32_t cpu_id, stream_id, prev_stream_id = -1;
+	uint64_t event_type, event_value, offset_stream, offset;
+	uint32_t old_cpu_id = -1;
 
 	begin_pos.type = BT_SEEK_BEGIN;
 	iter = bt_ctf_iter_create(bt_ctx, &begin_pos, NULL);
@@ -263,31 +264,70 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp)
 
 	while ((event = bt_ctf_iter_read_event_flags(iter, &flags)) != NULL)
 	{
-		cpu_id = 1;
+		if (first_event_timestamp == -1)
+		{
+			first_event_timestamp = bt_ctf_get_timestamp(event);
+		}
+
+/** State Records
+
+		scope = bt_ctf_get_top_level_scope(event, BT_TRACE_PACKET_HEADER);
+		stream_id = bt_get_unsigned_int(bt_ctf_get_field(event,scope, "stream_id"));
+		if (stream_id != prev_stream_id)
+		{
+			prev_stream_id = stream_id;
+			scope = bt_ctf_get_top_level_scope(event, BT_STREAM_PACKET_CONTEXT);
+			cpu_id = bt_get_unsigned_int(bt_ctf_get_field(event, scope, "cpu_id"));
+			init_time = bt_ctf_get_uint64(bt_ctf_get_field(event, scope, "timestamp_begin"));
+			end_time = bt_ctf_get_uint64(bt_ctf_get_field(event, scope, "timestamp_end"));
+			fprintf(fp, "1:%" PRIu32 ":%" PRIu64 ":%" PRIu64 ":%" PRIu64 ":%" PRIu64 ":%" PRIu64 ":%" PRIu64 "\n", cpu_id, appl_id, task_id, thread_id, init_time, end_time, state);
+		}
+**/
+
+		scope = bt_ctf_get_top_level_scope(event, BT_STREAM_PACKET_CONTEXT);
+		cpu_id = bt_get_unsigned_int(bt_ctf_get_field(event, scope, "cpu_id")) + 1;
 		appl_id = 1;
 		task_id = 1;
-		thread_id = 1;
-		init_time = bt_ctf_get_timestamp(event);
-		state=1;
+		thread_id = cpu_id;
 
-/*		fprintf(fp, "ID: %s, TIME: %" PRIu64 "\n",
-				bt_ctf_event_name(event),
-				bt_ctf_get_timestamp(event));
-*/
+/**************************** State Records ***************************/
+
+		if (old_cpu_id == -1 || old_cpu_id != cpu_id)
+		{
+			old_cpu_id = cpu_id;
+
+			offset = 1443443077719118246;		// Get offset from clock metadata
+			offset_stream = 324941737309994; // Get from first stream
+			scope = bt_ctf_get_top_level_scope(event, BT_STREAM_PACKET_CONTEXT);
+			init_time = bt_ctf_get_uint64(bt_ctf_get_field(event, scope, "timestamp_begin"));
+			end_time = bt_ctf_get_uint64(bt_ctf_get_field(event, scope, "timestamp_end")) - init_time;
+			init_time = init_time - offset_stream;
+
+			state = 2;
+	
+			fprintf(fp, "1:%u:%" PRIu64 ":%" PRIu64 ":%" PRIu64 ":%" PRIu64 ":%" PRIu64 ":%" PRIu64 "\n", cpu_id, appl_id, task_id, thread_id, init_time, end_time, state);
+		}
+
+/**************************** /State Records **************************/
+
+/**************************** Event Records ***************************/
+
+//		event_time = bt_ctf_get_timestamp(event) - first_event_timestamp;
+//		event_time = bt_ctf_get_timestamp(event) - offset;
+		event_time = bt_ctf_get_timestamp(event) - offset - offset_stream;
+
+		scope = bt_ctf_get_top_level_scope(event, BT_STREAM_EVENT_HEADER);
+		event_type = 100000000;
+		event_value = bt_ctf_get_uint64(bt_ctf_get_enum_int(bt_ctf_get_field(event, scope, "id")));
+
+		fprintf(fp, "2:%u:%" PRIu64 ":%" PRIu64 ":%" PRIu64 ":%" PRIu64 ":%" PRIu64 ":%" PRIu64 "\n", cpu_id, appl_id, task_id, thread_id, event_time, event_type, event_value);
+
+/*************************** /Event Records ***************************/
+
 		if (flags) 
 		{
 			fprintf(stderr, "LOST : %" PRIu64 "\n", bt_ctf_get_lost_events_count(iter));
 		}
-
-		scope = bt_ctf_get_top_level_scope(event, BT_STREAM_PACKET_CONTEXT);
-		cpu_id = bt_ctf_get_uint64(bt_ctf_get_field(event, scope, "cpu_id"));
-		scope = bt_ctf_get_top_level_scope(event, BT_STREAM_EVENT_HEADER);
-//		printf("%" PRIu64 "\n", bt_ctf_get_uint64(bt_ctf_get_enum_int(bt_ctf_get_field(event, scope, "id"))));
-//
-//		*********************************************
-//		This is not the task_id, what is this number?
-//		*********************************************
-		task_id = bt_ctf_get_uint64(bt_ctf_get_enum_int(bt_ctf_get_field(event, scope, "id")));
 
 /*
 		if (strcmp(bt_ctf_event_name(event), "sched_switch") == 0)
@@ -297,8 +337,8 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp)
 						event, scope, "_prev_comm")); if (bt_ctf_field_get_error()) { fprintf(stderr, "Missing prev_comm context info\n"); } fprintf(fp, "sched_switch prev_comm : %s\n", prev_comm);
 		}
 */
+//		fprintf(fp, "1:%" PRIu32 ":%" PRIu64 ":%" PRIu64 ":%" PRIu64 ":%" PRIu64 ":%" PRIu64 ":%" PRIu64 "\n", cpu_id, appl_id, task_id, thread_id, init_time, end_time, state);
 		ret = bt_iter_next(bt_ctf_get_iter(iter));
-		fprintf(fp, "1:%" PRIu64 ":%" PRIu64 ":%" PRIu64 ":%" PRIu64 ":%" PRIu64 ":%" PRIu64 ":%" PRIu64 "\n", cpu_id, appl_id, task_id, thread_id, init_time, bt_ctf_get_timestamp(event), state);
 
 		if (ret < 0)
 			goto end_iter;
@@ -318,6 +358,10 @@ void list_events(struct bt_context *bt_ctx, FILE *fp)
 	uint64_t event_id;
 	char *event_name;
 
+	fprintf(fp, "EVENT_TYPE\n"
+			"0\t100000000\tSystem Call\n"
+			"VALUES\n");
+
 	bt_ctf_get_event_decl_list(0, bt_ctx, &list, &cnt);
 	for (i = 0; i < cnt; i++)
 	{
@@ -325,24 +369,90 @@ void list_events(struct bt_context *bt_ctx, FILE *fp)
 
 		event_id = bt_ctf_get_decl_event_id(list[i]);
 		event_name = bt_ctf_get_decl_event_name(list[i]);
-		fprintf(fp, "%" PRIu64 " : %s\n", event_id, event_name);
+		fprintf(fp, "%" PRIu64 "\t%s\n", event_id, event_name);
 
 //		fprintf(fp, "1:cpu_id:appl_id:%" PRIu64 ":thread_id:begin_time:end_time:state\n", task_id);
 	}
 }
 
-//int trace_pre_handler(struct bt_trace_descriptor, struct bt_context);
-//int convert_trace(struct bt_trace_descriptor, struct bt_context);
-//int trace_post_handler(struct bt_trace_descriptor, struct bt_context);
+void printPCFHeader(FILE *fp)
+{
+	fprintf(fp,
+			"DEFAULT_OPTIONS\n\n"
+			"LEVEL\t\t\tTHREAD\n"
+			"UNITS\t\t\tNANOSEC\n"
+			"LOOK_BACK\t\t100\n"
+			"SPEED\t\t\t1\n"
+			"FLAG_ICONS\t\tENABLED\n"
+			"NUM_OF_STATE_COLORS\t1000\n"
+			"YMAX_SCALE\t\t37\n\n\n"
+			"DEFAULT_SEMANTIC\n\n"
+			"THREAD_FUNC\t\tState As Is\n\n\n");
+
+	fprintf(fp,
+			"STATES\n"
+			"0\t\tIdle\n"
+			"1\t\tRunning\n"
+			"2\t\tNot created\n"
+			"3\t\tWaiting a message\n"
+			"4\t\tBlocking Send\n"
+			"5\t\tSynchronization\n"
+			"6\t\tTest/Probe\n"
+			"7\t\tScheduling and Fork/Join\n"
+			"8\t\tWait/WaitAll\n"
+			"9\t\tBlocked\n"
+			"10\t\tImmediate Send\n"
+			"11\t\tImmediate Receive\n"
+			"12\t\tI/O\n"
+			"13\t\tGroup Communication\n"
+			"14\t\tTracing Disabled\n"
+			"15\t\tOthers\n"
+			"16\t\tSend Receive\n"
+			"17\t\tMemory transfer\n"
+			"18\t\tProfiling\n"
+			"19\t\tOn-line analysis\n"
+			"20\t\tRemote memory access\n"
+			"21\t\tAtomic memory operation\n"
+			"22\t\tMemory ordering operation\n"
+			"23\t\tDistributed locking\n\n\n");
+
+	fprintf(fp,
+			"STATES_COLOR\n"
+			"0\t\t{117,195,255}\n"
+			"1\t\t{0,0,255}\n"
+			"2\t\t{255,255,255}\n"
+			"3\t\t{255,0,0}\n"
+			"4\t\t{255,0,174}\n"
+			"5\t\t{179,0,0}\n"
+			"6\t\t{0,255,0}\n"
+			"7\t\t{255,255,0}\n"
+			"8\t\t{235,0,0}\n"
+			"9\t\t{0,162,0}\n"
+			"10\t\t{255,0,255}\n"
+			"11\t\t{100,100,177}\n"
+			"12\t\t{172,174,41}\n"
+			"13\t\t{255,144,26}\n"
+			"14\t\t{2,255,177}\n"
+			"15\t\t{192,224,0}\n"
+			"16\t\t{66,66,66}\n"
+			"17\t\t{255,0,96}\n"
+			"18\t\t{169,169,169}\n"
+			"19\t\t{169,0,0}\n"
+			"20\t\t{0,109,255}\n"
+			"21\t\t{200,61,68}\n"
+			"22\t\t{200,66,0}\n"
+			"23\t\t{0,41,0}\n\n\n");
+}
 
 int main(int argc, char **argv)
 {
 	int ret = 0;
 	const char *format_str;
-	struct bt_format *fmt_write;
-	struct bt_trace_descriptor *td_write;
+//	struct bt_format *fmt_write;
+//	struct bt_trace_descriptor *td_write;
 	struct bt_context *ctx;
 	struct bt_iter_pos begin_pos;
+	struct bt_ctf_clock *clock;
 
 	FILE *prv, *pcf;
 
@@ -396,7 +506,7 @@ int main(int argc, char **argv)
 	uint64_t ftime = bt_trace_handle_get_timestamp_end(ctx, 0, BT_CLOCK_REAL)
 		- bt_trace_handle_get_timestamp_begin(ctx, 0, BT_CLOCK_REAL);
 
-	fprintf(prv, "#Paraver (%s/%s/%d at %s:%s):%" PRIu64 "_ns\n",
+	fprintf(prv, "#Paraver (%s/%s/%d at %s:%s):%" PRIu64 "_ns:1(16):1:1(16:1),1\nc:1:1:1:1\n",
 			day,
 			mon,
 			local->tm_year + 1900,
@@ -405,6 +515,7 @@ int main(int argc, char **argv)
 			ftime
 	);
 
+	printPCFHeader(pcf);
 	list_events(ctx, pcf);
 	iter_trace(ctx, prv);
 
@@ -414,32 +525,6 @@ end:
 	fflush(pcf);
 	fclose(prv);
 	fclose(pcf);
-//	printf("Paraver trace %s generated", outputTrace);
+
 	return 0;
 }
-
-/*
-	ret = trace_pre_handler(td_write, ctx);
-	if (ret)
-	{
-		fprintf(stderr, "Error in trace pre handle.\n\n");
-		return 1;
-	}
-
-	if (fmt_read->name == g_quark_from_static_string("ctf"))
-	{
-		ret = convert_trace(td_write, ctx);
-	}
-	if (ret)
-	{
-		fprintf(stderr, "Error printing trace. \n\n");
-		return 1;
-	}
-
-	ret = trace_post_handler(td_write, ctx);
-	if (ret)
-	{
-		fprintf(stderr, "Error in trace post handle.\n\n");
-		return 1;
-	}
-*/
