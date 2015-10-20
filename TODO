@@ -1,3 +1,3 @@
-Get timestamps from metadata and correctly use them.
-Get #CPUs from metadata.
-Thread statuses.
+Get timestamps from metadata and not have to traverse all events.
+Get #CPUs from metadata and not have to traverse all events.
+Event parameters.
