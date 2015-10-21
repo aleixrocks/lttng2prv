@@ -49,6 +49,13 @@ struct traceTimes
 struct traceTimes trace_times;
 uint64_t offset;
 
+struct Events
+{
+	uint64_t id;
+	char *name;
+	struct Events *next;
+};
+
 static void print_usage(FILE *fp)
 {
 	fprintf(fp, "CTF2PRV trace converter \n\n");
@@ -310,6 +317,7 @@ end_iter:
 // Iterates through all events of the trace
 void iter_trace(struct bt_context *bt_ctx, FILE *fp)
 {
+	unsigned int NCPUS = 16;
 	struct bt_ctf_iter *iter;
 	struct bt_iter_pos begin_pos;
 	struct bt_ctf_event *event;
@@ -321,6 +329,13 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp)
 	uint32_t cpu_id, stream_id, prev_stream_id = -1;
 	uint64_t event_type, event_value, offset_stream;
 	uint32_t old_cpu_id = -1;
+	uint64_t cpu_thread[NCPUS];
+	unsigned int i = 0;
+
+	for (i = 0; i<16; i++)
+	{
+		cpu_thread[i] = i + 1;
+	}
 
 	begin_pos.type = BT_SEEK_BEGIN;
 	iter = bt_ctf_iter_create(bt_ctx, &begin_pos, NULL);
@@ -334,9 +349,15 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp)
 		cpu_id = bt_get_unsigned_int(bt_ctf_get_field(event, scope, "cpu_id")) + 1;
 		appl_id = 1;
 		task_id = 1;
-		thread_id = cpu_id;
 
 /**************************** State Records ***************************/
+
+		if (strstr(bt_ctf_event_name(event), "sched_switch") != NULL)
+		{
+			scope = bt_ctf_get_top_level_scope(event, BT_EVENT_FIELDS);
+			cpu_thread[cpu_id] = bt_get_signed_int(bt_ctf_get_field(event, scope, "_next_tid"));
+			if (cpu_thread[cpu_id] == 0) cpu_thread[cpu_id] = cpu_id + 1;
+		}
 
 		if (old_cpu_id == -1 || old_cpu_id != cpu_id)
 		{
@@ -352,25 +373,40 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp)
 
 			state = 1;
 	
-			fprintf(fp, "1:%u:%" PRIu64 ":%" PRIu64 ":%" PRIu64 ":%" PRIu64 ":%" PRIu64 ":%" PRIu64 "\n", cpu_id, appl_id, task_id, thread_id, init_time, end_time, state);
+			fprintf(fp, "1:%u:%" PRIu64 ":%" PRIu64 ":%" PRIu64 ":%" PRIu64 ":%" PRIu64 ":%" PRIu64 "\n", cpu_id, appl_id, task_id, cpu_thread[cpu_id - 1], init_time, end_time, state);
 		}
 
 /**************************** /State Records **************************/
 
 /**************************** Event Records ***************************/
 
+		scope = bt_ctf_get_top_level_scope(event, BT_STREAM_PACKET_CONTEXT);
 		event_time = bt_ctf_get_timestamp(event) - offset - offset_stream;
 
+		if (strstr(bt_ctf_event_name(event), "syscall") != NULL)
+		{
+			event_type = 100000000;
+		}else
+		{
+			event_type = 200000000;
+		}
+
 		scope = bt_ctf_get_top_level_scope(event, BT_STREAM_EVENT_HEADER);
-		event_type = 100000000;
-		event_value = bt_ctf_get_uint64(bt_ctf_get_enum_int(bt_ctf_get_field(event, scope, "id")));
-		/*** ID for value == 65536 in extended metadata***/
+		if (strstr(bt_ctf_event_name(event), "syscall_exit_") != NULL)
+		{
+			event_value = 0;
+		}else
+		{
+			event_value = bt_ctf_get_uint64(bt_ctf_get_enum_int(bt_ctf_get_field(event, scope, "id")));
+		}
+		
+/*****		 ID for value == 65536 in extended metadata		*****/
 		if (event_value == 65535)
 		{
 			event_value = bt_ctf_get_uint64(bt_ctf_get_struct_field_index(bt_ctf_get_field(event, scope, "v"), 0));
 		}
 
-		fprintf(fp, "2:%u:%" PRIu64 ":%" PRIu64 ":%" PRIu64 ":%" PRIu64 ":%" PRIu64 ":%" PRIu64 "\n", cpu_id, appl_id, task_id, thread_id, event_time, event_type, event_value);
+		fprintf(fp, "2:%u:%" PRIu64 ":%" PRIu64 ":%" PRIu64 ":%" PRIu64 ":%" PRIu64 ":%" PRIu64 "\n", cpu_id, appl_id, task_id, cpu_thread[cpu_id - 1], event_time, event_type, event_value);
 
 
 /*************************** /Event Records ***************************/
@@ -399,25 +435,101 @@ end_iter:
 	bt_ctf_iter_destroy(iter);
 }
 
+// Removes substring torm from input string dest
+void rmsubstr(char *dest, char *torm)
+{
+	if ((dest = strstr(dest, torm)) != NULL)
+	{
+		const size_t len = strlen(torm);
+		char *copyEnd;
+		char *copyFrom = dest + len;
+
+		while ((copyEnd = strstr(copyFrom, torm)) != NULL)
+		{  
+			memmove(dest, copyFrom, copyEnd - copyFrom);
+			dest += copyEnd - copyFrom;
+			copyFrom = copyEnd + len;
+		}
+		memmove(dest, copyFrom, 1 + strlen(copyFrom));
+	}
+}
+
 // Prints list of event types
 void list_events(struct bt_context *bt_ctx, FILE *fp)
 {
-	unsigned int cnt, i; //, fcnt;
+	unsigned int cnt, i;
 	struct bt_ctf_event_decl *const * list;
 	uint64_t event_id;
 	char *event_name;
+	struct Events *syscalls_root;
+	struct Events *syscalls;
+	struct Events *kerncalls_root;
+	struct Events *kerncalls;
 
-	fprintf(fp, "EVENT_TYPE\n"
-			"0\t100000000\tSystem Call\n"
-			"VALUES\n");
+	syscalls_root = (struct Events *) malloc(sizeof(struct Events));
+	syscalls_root->next = NULL;
+	syscalls = syscalls_root;
+
+	kerncalls_root = (struct Events *) malloc(sizeof(struct Events));
+	kerncalls_root->next = NULL;
+	kerncalls = kerncalls_root;
 
 	bt_ctf_get_event_decl_list(0, bt_ctx, &list, &cnt);
 	for (i = 0; i < cnt; i++)
 	{
 		event_id = bt_ctf_get_decl_event_id(list[i]);
 		event_name = bt_ctf_get_decl_event_name(list[i]);
-		fprintf(fp, "%" PRIu64 "\t%s\n", event_id, event_name);
+
+ 		if (strstr(event_name, "syscall_entry") != NULL) {
+ 			syscalls->id = event_id;
+
+			/* Careful with this call, moves memory positions and may result
+			 * in malfunction. See comment at the end of main.
+			 */ 
+ 			rmsubstr(event_name, "syscall_entry_");
+ 			syscalls->name = (char *) malloc(strlen(event_name) + 1);
+ 			strncpy(syscalls->name, event_name, strlen(event_name) + 1);
+ 			syscalls->next = (struct Events *) malloc(sizeof(struct Events));
+ 			syscalls = syscalls->next;
+ 			syscalls->next = NULL;
+ 		} else if (strstr(event_name, "syscall_exit") == NULL)
+ 		{
+ 			kerncalls->id = event_id;
+ 			kerncalls->name = (char *) malloc(strlen(event_name) + 1);
+ 			strncpy(kerncalls->name, event_name, strlen(event_name) + 1);
+ 			kerncalls->next = (struct Events*) malloc(sizeof(struct Events));
+ 			kerncalls = kerncalls->next;
+ 			kerncalls->next = NULL;
+ 		}
+ 	}
+ 
+	fprintf(fp, "EVENT_TYPE\n"
+			"0\t100000000\tSystem Call\n"
+			"VALUES\n");
+
+ 	syscalls = syscalls_root;
+ 	while(syscalls->next != NULL)
+ 	{
+ 		fprintf(fp, "%" PRIu64 "\t%s\n", syscalls->id, syscalls->name);
+ 		syscalls = syscalls->next;
+ 	}
+	fprintf(fp, "0\texit\n\n\n");
+
+	fprintf(fp, "EVENT_TYPE\n"
+			"0\t200000000\tKernel Event\n"
+			"VALUES\n");
+
+	kerncalls = kerncalls_root;
+	while(kerncalls->next != NULL)
+	{
+		fprintf(fp, "%" PRIu64 "\t%s\n", kerncalls->id, kerncalls->name);
+		kerncalls = kerncalls->next;
 	}
+
+	free(syscalls_root);
+	free(syscalls);
+	free(kerncalls_root);
+	free(kerncalls);
 }
 
 void printPCFHeader(FILE *fp)
@@ -538,8 +650,13 @@ int main(int argc, char **argv)
 
 	printPRVHeader(ctx, prv);
 	printPCFHeader(pcf);
-	list_events(ctx, pcf);
+
+	/* This two, have to be in this order, if not we remove the string
+	 * syscall_entry_ before traversing the trace and the events don't
+	 * get listed properly.
+	 */
 	iter_trace(ctx, prv);
+	list_events(ctx, pcf);
 
 end:
 	bt_context_put(ctx);
