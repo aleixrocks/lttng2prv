@@ -1,6 +1,7 @@
 Get timestamps from metadata and not have to traverse all events.
-Get #CPUs from metadata and not have to traverse all events.
+Get #CPUs and threads from metadata and not have to traverse all events.
 Event parameters.
+What to do with thread 0. To which CPU assign it?
 
 Jesus comments
 * Solo aparecen 16 threads y en la traza original habia muchisimos, no? En el formato de paraver se puede poner el identificador de aplicacion, proceso y thread en cada record ademas de un campo de CPU. Tendrias que intentar mapear los records usando estos conceptos.

@@ -331,6 +331,7 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp)
 	uint32_t old_cpu_id = -1;
 	uint64_t cpu_thread[NCPUS];
 	unsigned int i = 0;
+	char *event_name;
 
 	for (i = 0; i<16; i++)
 	{
@@ -346,19 +347,29 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp)
 	while ((event = bt_ctf_iter_read_event_flags(iter, &flags)) != NULL)
 	{
 		scope = bt_ctf_get_top_level_scope(event, BT_STREAM_PACKET_CONTEXT);
-		cpu_id = bt_get_unsigned_int(bt_ctf_get_field(event, scope, "cpu_id")) + 1;
+		cpu_id = bt_get_unsigned_int(bt_ctf_get_field(event, scope, "cpu_id"));
 		appl_id = 1;
 		task_id = 1;
 
-/**************************** State Records ***************************/
+		event_name = (char *) malloc(sizeof(char *) * strlen(bt_ctf_event_name(event) + 1));
+		strcpy(event_name, bt_ctf_event_name(event));
 
-		if (strstr(bt_ctf_event_name(event), "sched_switch") != NULL)
+		if (strstr(event_name, "sched_switch") != NULL)
 		{
 			scope = bt_ctf_get_top_level_scope(event, BT_EVENT_FIELDS);
 			cpu_thread[cpu_id] = bt_get_signed_int(bt_ctf_get_field(event, scope, "_next_tid"));
 			if (cpu_thread[cpu_id] == 0) cpu_thread[cpu_id] = cpu_id + 1;
 		}
 
+/**************************** State Records ***************************/
+
+//		if (strstr(event_name, "sched_switch") != NULL)
+//		{
+//			scope = bt_ctf_get_top_level_scope(event, BT_EVENT_FIELDS);
+//			cpu_thread[cpu_id] = bt_get_signed_int(bt_ctf_get_field(event, scope, "_next_tid"));
+//			if (cpu_thread[cpu_id] == 0) cpu_thread[cpu_id] = cpu_id + 1;
+//		}
+//
 		if (old_cpu_id == -1 || old_cpu_id != cpu_id)
 		{
 			old_cpu_id = cpu_id;
@@ -373,17 +384,18 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp)
 
 			state = 1;
 	
-			fprintf(fp, "1:%u:%" PRIu64 ":%" PRIu64 ":%" PRIu64 ":%" PRIu64 ":%" PRIu64 ":%" PRIu64 "\n", cpu_id, appl_id, task_id, cpu_thread[cpu_id - 1], init_time, end_time, state);
+			fprintf(fp, "1:%u:%" PRIu64 ":%" PRIu64 ":%" PRIu64 ":%" PRIu64 ":%" PRIu64 ":%" PRIu64 "\n", cpu_id + 1, appl_id, task_id, cpu_thread[cpu_id], init_time, end_time, state);
 		}
 
 /**************************** /State Records **************************/
 
 /**************************** Event Records ***************************/
 
+		offset_stream = trace_times.first_stream_timestamp;
 		scope = bt_ctf_get_top_level_scope(event, BT_STREAM_PACKET_CONTEXT);
 		event_time = bt_ctf_get_timestamp(event) - offset - offset_stream;
 
-		if (strstr(bt_ctf_event_name(event), "syscall") != NULL)
+		if (strstr(event_name, "syscall") != NULL)
 		{
 			event_type = 100000000;
 		}else
@@ -392,12 +404,12 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp)
 		}
 
 		scope = bt_ctf_get_top_level_scope(event, BT_STREAM_EVENT_HEADER);
-		if (strstr(bt_ctf_event_name(event), "syscall_exit_") != NULL)
-		{
-			event_value = 0;
-		}else
+		if (strstr(event_name, "syscall_exit_") == NULL)
 		{
 			event_value = bt_ctf_get_uint64(bt_ctf_get_enum_int(bt_ctf_get_field(event, scope, "id")));
+		}else
+		{
+			event_value = 0;
 		}
 		
 /*****		 ID for value == 65536 in extended metadata		*****/
@@ -406,7 +418,8 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp)
 			event_value = bt_ctf_get_uint64(bt_ctf_get_struct_field_index(bt_ctf_get_field(event, scope, "v"), 0));
 		}
 
-		fprintf(fp, "2:%u:%" PRIu64 ":%" PRIu64 ":%" PRIu64 ":%" PRIu64 ":%" PRIu64 ":%" PRIu64 "\n", cpu_id, appl_id, task_id, cpu_thread[cpu_id - 1], event_time, event_type, event_value);
+		fprintf(fp, "2:%u:%" PRIu64 ":%" PRIu64 ":%" PRIu64 ":%" PRIu64 ":%" PRIu64 ":%" PRIu64 "\n", cpu_id + 1, appl_id, task_id, cpu_thread[cpu_id], event_time, event_type, event_value);
+		free(event_name);
 
 
 /*************************** /Event Records ***************************/
