@@ -242,16 +242,26 @@ error:
 	return BT_CB_ERROR_STOP;
 }
 
-void printPRVHeader(struct bt_context *ctx, FILE *fp)
+GHashTable* getThreadData(struct bt_context *ctx)
 {
+	GHashTable *tidInfo = g_hash_table_new(g_direct_hash, g_direct_equal);
+	int tid, pid, ppid = 1;
+	char name[16];
+	unsigned int namelen = 0;
+
+	uint64_t init_time_old, end_time_old;
+
 	struct bt_iter_pos begin_pos;
 	struct bt_ctf_iter *iter;
 	struct bt_ctf_event *event;
 	int flags;
 	int ret = 0;
 
+	trace_times.first_stream_timestamp = 0;
+	trace_times.last_stream_timestamp = 0;
+	offset = 0;
+
 	const struct bt_definition *scope;
-	uint64_t init_time_old, end_time_old;
 
 	begin_pos.type = BT_SEEK_BEGIN;
 	iter = bt_ctf_iter_create(ctx, &begin_pos, NULL);
@@ -259,12 +269,9 @@ void printPRVHeader(struct bt_context *ctx, FILE *fp)
 			g_quark_from_static_string("exit_syscall"), NULL, 0,
 			handle_exit_syscall, NULL, NULL, NULL);
 
-	trace_times.first_stream_timestamp = 0;
-	trace_times.last_stream_timestamp = 0;
-	offset = 0;
-
 	while ((event = bt_ctf_iter_read_event_flags(iter, &flags)) != NULL)
 	{
+		/** Get Timestamps  and offset **/
 		scope = bt_ctf_get_top_level_scope(event, BT_STREAM_PACKET_CONTEXT);
 		if (trace_times.first_stream_timestamp > bt_ctf_get_uint64(bt_ctf_get_field(event, scope, "timestamp_begin")) || trace_times.first_stream_timestamp == 0)
 		{
@@ -280,6 +287,20 @@ void printPRVHeader(struct bt_context *ctx, FILE *fp)
 			offset = bt_ctf_get_timestamp(event);
 		}
 
+		/** Get process tree **/
+		if (strstr(bt_ctf_event_name(event), "lttng_statedump_process_state") != NULL)
+		{
+			scope = bt_ctf_get_top_level_scope(event, BT_EVENT_FIELDS);
+			tid = bt_get_signed_int(bt_ctf_get_field(event, scope, "_tid"));
+			pid = bt_get_signed_int(bt_ctf_get_field(event, scope, "_pid"));
+			ppid = bt_get_signed_int(bt_ctf_get_field(event, scope, "_ppid"));
+
+			namelen = strlen(bt_ctf_event_name(event)) + 1;
+			strcpy(name, bt_ctf_get_char_array(bt_ctf_get_field(event, scope, "_name")));
+
+			if (pid == tid) pid = ppid;
+			g_hash_table_insert(tidInfo, GINT_TO_POINTER(tid), GINT_TO_POINTER(pid));
+		}
 
 		ret = bt_iter_next(bt_ctf_get_iter(iter));
 
@@ -287,6 +308,14 @@ void printPRVHeader(struct bt_context *ctx, FILE *fp)
 			goto end_iter;
 	}
 
+end_iter:
+	bt_ctf_iter_destroy(iter);
+
+	return tidInfo;
+}
+
+void printPRVHeader(struct bt_context *ctx, FILE *fp, GHashTable *threadData)
+{
 	offset -= trace_times.first_stream_timestamp;
 
 	time_t now = time(0);
@@ -300,18 +329,42 @@ void printPRVHeader(struct bt_context *ctx, FILE *fp)
 	sprintf(hour, "%.2d", local->tm_hour);
 	sprintf(min, "%.2d", local->tm_min);
 
-	fprintf(fp, "#Paraver (%s/%s/%d at %s:%s):%" PRIu64 "_ns:1(16):1:1(16:1),1\nc:1:1:1:1\n",
+	fprintf(fp, "#Paraver (%s/%s/%d at %s:%s):%" PRIu64 "_ns:1(16):1:1(%d:1),1\nc:1:1:1:1\n",
 			day,
 			mon,
 			local->tm_year + 1900,
 			hour,
 			min,
-			ftime
+			ftime,
+			g_hash_table_size(threadData)
 	);
+}
 
+void iterator(gpointer key, gpointer value, gpointer user_data)
+{
+	printf(user_data, value, key);
+}
 
-end_iter:
-	bt_ctf_iter_destroy(iter);
+gint compareInt(gconstpointer a, gconstpointer b) {
+	 return GPOINTER_TO_INT(a) - GPOINTER_TO_INT(b);
+}
+
+void printROW(FILE *fp, GHashTable *threadData)
+{
+	int pid = 1;
+	GList *threads = g_hash_table_get_keys(threadData);
+	GList *threadsSorted = g_list_sort(threads, (GCompareFunc)compareInt);
+
+	fprintf(fp, "LEVEL THREAD SIZE %d\n", g_hash_table_size(threadData));
+	while (threadsSorted != NULL)
+	{
+		pid = GPOINTER_TO_INT(g_hash_table_lookup(threadData, threadsSorted->data));
+		fprintf(fp, "THREAD 1.%d.%d\n", pid, GPOINTER_TO_INT(threadsSorted->data));
+		threadsSorted = threadsSorted->next;
+	}
+	g_list_free(threads);
+	g_list_free(threadsSorted);
+	//g_hash_table_foreach(threadData, (GHFunc)iterator, "THREAD 1.%d.%d\n");
 }
 
 // Iterates through all events of the trace
@@ -397,10 +450,10 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp)
 
 		if (strstr(event_name, "syscall") != NULL)
 		{
-			event_type = 100000000;
+			event_type = 10000000;
 		}else
 		{
-			event_type = 200000000;
+			event_type = 11000000;
 		}
 
 		scope = bt_ctf_get_top_level_scope(event, BT_STREAM_EVENT_HEADER);
@@ -517,7 +570,7 @@ void list_events(struct bt_context *bt_ctx, FILE *fp)
  	}
  
 	fprintf(fp, "EVENT_TYPE\n"
-			"0\t100000000\tSystem Call\n"
+			"0\t10000000\tSystem Call\n"
 			"VALUES\n");
 
  	syscalls = syscalls_root;
@@ -526,10 +579,10 @@ void list_events(struct bt_context *bt_ctx, FILE *fp)
  		fprintf(fp, "%" PRIu64 "\t%s\n", syscalls->id, syscalls->name);
  		syscalls = syscalls->next;
  	}
-	fprintf(fp, "0\texit\n\n\n");
+	fprintf(fp, "0\tEnd\n\n\n");
 
 	fprintf(fp, "EVENT_TYPE\n"
-			"0\t200000000\tKernel Event\n"
+			"0\t11000000\tKernel Event\n"
 			"VALUES\n");
 
 	kerncalls = kerncalls_root;
@@ -621,7 +674,9 @@ int main(int argc, char **argv)
 	struct bt_context *ctx;
 	struct bt_iter_pos begin_pos;
 
-	FILE *prv, *pcf;
+	FILE *prv, *pcf, *row;
+
+	GHashTable *threadData;
 
 	if (!opt_output)
 	{
@@ -637,6 +692,14 @@ int main(int argc, char **argv)
 	}else
 	{
 		pcf = fopen(opt_output, "w+");
+	}
+
+	if (!opt_output)
+	{
+		row = fopen("trace.row", "w+");
+	}else
+	{
+		row = fopen(opt_output, "w+");
 	}
 
 	ret = parse_options(argc, argv);
@@ -661,8 +724,10 @@ int main(int argc, char **argv)
 		goto end;
 	}
 
-	printPRVHeader(ctx, prv);
+	threadData = getThreadData(ctx);
+	printPRVHeader(ctx, prv, threadData);
 	printPCFHeader(pcf);
+	printROW(row, threadData);
 
 	/* This two, have to be in this order, if not we remove the string
 	 * syscall_entry_ before traversing the trace and the events don't
