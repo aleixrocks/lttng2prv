@@ -242,10 +242,10 @@ error:
 	return BT_CB_ERROR_STOP;
 }
 
-GHashTable* getThreadData(struct bt_context *ctx)
+void getThreadData(struct bt_context *ctx, GHashTable *pidTid, GHashTable *threadPid)
 {
-	GHashTable *tidInfo = g_hash_table_new(g_direct_hash, g_direct_equal);
-	int tid, pid, ppid = 1;
+	// GHashTable *pidTid = g_hash_table_new(g_direct_hash, g_direct_equal);
+	int tid, pid, ppid;
 	char name[16];
 	unsigned int namelen = 0;
 
@@ -256,6 +256,10 @@ GHashTable* getThreadData(struct bt_context *ctx)
 	struct bt_ctf_event *event;
 	int flags;
 	int ret = 0;
+
+	GHashTable *conv_ht = g_hash_table_new(g_direct_hash, g_direct_equal);
+	int convTID = 1;
+	int nPID, nTID;
 
 	trace_times.first_stream_timestamp = 0;
 	trace_times.last_stream_timestamp = 0;
@@ -287,7 +291,7 @@ GHashTable* getThreadData(struct bt_context *ctx)
 			offset = bt_ctf_get_timestamp(event);
 		}
 
-		/** Get process tree **/
+		/** Get process - thread relationship **/
 		if (strstr(bt_ctf_event_name(event), "lttng_statedump_process_state") != NULL)
 		{
 			scope = bt_ctf_get_top_level_scope(event, BT_EVENT_FIELDS);
@@ -299,7 +303,28 @@ GHashTable* getThreadData(struct bt_context *ctx)
 			strcpy(name, bt_ctf_get_char_array(bt_ctf_get_field(event, scope, "_name")));
 
 			if (pid == tid) pid = ppid;
-			g_hash_table_insert(tidInfo, GINT_TO_POINTER(tid), GINT_TO_POINTER(pid));
+			if (pid == 0) pid = tid;
+
+			if (g_hash_table_lookup(conv_ht, GINT_TO_POINTER(pid)) == NULL)
+			{
+				g_hash_table_insert(conv_ht, GINT_TO_POINTER(pid), GINT_TO_POINTER(convTID));
+				convTID++;
+			}
+
+			if (g_hash_table_lookup(conv_ht, GINT_TO_POINTER(tid)) == NULL)
+			{
+				g_hash_table_insert(conv_ht, GINT_TO_POINTER(tid), GINT_TO_POINTER(convTID));
+				convTID++;
+			}
+
+			nPID = GPOINTER_TO_INT(g_hash_table_lookup(conv_ht, GINT_TO_POINTER(pid)));
+			nTID = GPOINTER_TO_INT(g_hash_table_lookup(conv_ht, GINT_TO_POINTER(tid)));
+
+			g_hash_table_insert(pidTid, GINT_TO_POINTER(nPID),
+					g_slist_append(g_hash_table_lookup(
+							pidTid, GINT_TO_POINTER(nPID)), GINT_TO_POINTER(nTID)));
+
+			g_hash_table_insert(threadPid, GINT_TO_POINTER(nTID), GINT_TO_POINTER(nPID));
 		}
 
 		ret = bt_iter_next(bt_ctf_get_iter(iter));
@@ -310,8 +335,10 @@ GHashTable* getThreadData(struct bt_context *ctx)
 
 end_iter:
 	bt_ctf_iter_destroy(iter);
+}
 
-	return tidInfo;
+gint compareInt(gconstpointer a, gconstpointer b) {
+	 return GPOINTER_TO_INT(a) - GPOINTER_TO_INT(b);
 }
 
 void printPRVHeader(struct bt_context *ctx, FILE *fp, GHashTable *threadData)
@@ -329,7 +356,7 @@ void printPRVHeader(struct bt_context *ctx, FILE *fp, GHashTable *threadData)
 	sprintf(hour, "%.2d", local->tm_hour);
 	sprintf(min, "%.2d", local->tm_min);
 
-	fprintf(fp, "#Paraver (%s/%s/%d at %s:%s):%" PRIu64 "_ns:1(16):1:1(%d:1),1\nc:1:1:1:1\n",
+	fprintf(fp, "#Paraver (%s/%s/%d at %s:%s):%" PRIu64 "_ns:1(16):1:%d(",
 			day,
 			mon,
 			local->tm_year + 1900,
@@ -338,37 +365,52 @@ void printPRVHeader(struct bt_context *ctx, FILE *fp, GHashTable *threadData)
 			ftime,
 			g_hash_table_size(threadData)
 	);
-}
 
-void iterator(gpointer key, gpointer value, gpointer user_data)
-{
-	printf(user_data, value, key);
-}
+	GList *pids = g_hash_table_get_keys(threadData);
+	GList *pidsSorted = g_list_sort(pids, (GCompareFunc)compareInt);
 
-gint compareInt(gconstpointer a, gconstpointer b) {
-	 return GPOINTER_TO_INT(a) - GPOINTER_TO_INT(b);
+	while (pidsSorted != NULL)
+	{
+		GList *threads = g_hash_table_lookup(threadData, pidsSorted->data);
+		if (pidsSorted->next != NULL)
+		{
+		fprintf(fp, "%d:%d,", g_list_length(threads), GPOINTER_TO_INT(pidsSorted->data));
+		}else
+		{
+			fprintf(fp, "%d:%d", g_list_length(threads), GPOINTER_TO_INT(pidsSorted->data));
+		}
+		g_list_free(threads);
+		pidsSorted = pidsSorted->next;
+	}
+	g_list_free(pidsSorted);
+	g_list_free(pids);
+
+	fprintf(fp, "),1\nc:1:1:1:1\n");
 }
 
 void printROW(FILE *fp, GHashTable *threadData)
 {
-	int pid = 1;
-	GList *threads = g_hash_table_get_keys(threadData);
-	GList *threadsSorted = g_list_sort(threads, (GCompareFunc)compareInt);
-
-	fprintf(fp, "LEVEL THREAD SIZE %d\n", g_hash_table_size(threadData));
-	while (threadsSorted != NULL)
+//	int pid = 1;
+	GList *pids = g_hash_table_get_keys(threadData);
+	GList *pidsSorted = g_list_sort(pids, (GCompareFunc)compareInt);
+	
+	while (pidsSorted != NULL)
 	{
-		pid = GPOINTER_TO_INT(g_hash_table_lookup(threadData, threadsSorted->data));
-		fprintf(fp, "THREAD 1.%d.%d\n", pid, GPOINTER_TO_INT(threadsSorted->data));
-		threadsSorted = threadsSorted->next;
+		GList *threads = g_hash_table_lookup(threadData, pidsSorted->data);
+		while (threads != NULL)
+		{
+			fprintf(fp, "THREAD 1.%d.%d\n", GPOINTER_TO_INT(pidsSorted->data), GPOINTER_TO_INT(threads->data));
+			threads = threads->next;
+		}
+		g_list_free(threads);
+		pidsSorted = pidsSorted->next;
 	}
-	g_list_free(threads);
-	g_list_free(threadsSorted);
-	//g_hash_table_foreach(threadData, (GHFunc)iterator, "THREAD 1.%d.%d\n");
+	g_list_free(pidsSorted);
+	g_list_free(pids);
 }
 
 // Iterates through all events of the trace
-void iter_trace(struct bt_context *bt_ctx, FILE *fp)
+void iter_trace(struct bt_context *bt_ctx, FILE *fp, GHashTable *threadPid)
 {
 	unsigned int NCPUS = 16;
 	struct bt_ctf_iter *iter;
@@ -413,6 +455,9 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp)
 			cpu_thread[cpu_id] = bt_get_signed_int(bt_ctf_get_field(event, scope, "_next_tid"));
 			if (cpu_thread[cpu_id] == 0) cpu_thread[cpu_id] = cpu_id + 1;
 		}
+
+		task_id = GPOINTER_TO_INT(g_hash_table_lookup(threadPid, GINT_TO_POINTER(cpu_thread[cpu_id])));
+		if (task_id == 0) task_id = cpu_thread[cpu_id];
 
 /**************************** State Records ***************************/
 
@@ -676,7 +721,8 @@ int main(int argc, char **argv)
 
 	FILE *prv, *pcf, *row;
 
-	GHashTable *threadData;
+	GHashTable *threadData = g_hash_table_new(g_direct_hash, g_direct_equal);
+	GHashTable *threadPid = g_hash_table_new(g_direct_hash, g_direct_equal);
 
 	if (!opt_output)
 	{
@@ -724,16 +770,16 @@ int main(int argc, char **argv)
 		goto end;
 	}
 
-	threadData = getThreadData(ctx);
+	getThreadData(ctx, threadData, threadPid);
 	printPRVHeader(ctx, prv, threadData);
 	printPCFHeader(pcf);
-	printROW(row, threadData);
+//	printROW(row, threadData);
 
 	/* This two, have to be in this order, if not we remove the string
 	 * syscall_entry_ before traversing the trace and the events don't
 	 * get listed properly.
 	 */
-	iter_trace(ctx, prv);
+	iter_trace(ctx, prv, threadPid);
 	list_events(ctx, pcf);
 
 end:

@@ -4,7 +4,7 @@ Event parameters.
 What to do with thread 0. To which CPU assign it?
 
 Jesus comments
-* Solo aparecen 16 threads y en la traza original habia muchisimos, no? En el formato de paraver se puede poner el identificador de aplicacion, proceso y thread en cada record ademas de un campo de CPU. Tendrias que intentar mapear los records usando estos conceptos.
+//* Solo aparecen 16 threads y en la traza original habia muchisimos, no? En el formato de paraver se puede poner el identificador de aplicacion, proceso y thread en cada record ademas de un campo de CPU. Tendrias que intentar mapear los records usando estos conceptos.
 
 //* Son realmente llamadas a sistema los valores bajos del evento? (ejemplo workqueue_queue_work) En realidad syscall son solo los que la etiqueta empieza por syscal, no? Habria que usar un tipo distinto para system calls y para otros eventos internos del kernel
 
@@ -12,7 +12,7 @@ Jesus comments
 
 * No se si para los eventos internos de kernel hay entrada y salida. En caso afirmativo lo mismo. el tipo de evento Paraver deberia agrupar todos los eventos relativos a un tema (e.g. memoria), el valor identificar el evento concreto y al salir un record paraver con el mismo tipo y valor cero. Si los eventos son puntuales (no hay el de entrada y el de salida) entonces solo un record paraver en el momento que sucede.
 
-* Los eventos sched_algo tienen informacion de cambios de contexto. Es lo que tienes que usar para determinar en que CPU esta cada thread.
+// * Los eventos sched_algo tienen informacion de cambios de contexto. Es lo que tienes que usar para determinar en que CPU esta cada thread.
 
 * Puedes generar mas cfgs? Duracion del las llamadas a sistema, Histograma de duracion, ....
 
