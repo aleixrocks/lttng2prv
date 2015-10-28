@@ -1,3 +1,9 @@
+28/10/2015
+- lttng-statedump doesn't get all threads, e.g. lulesh
+- sched_switch to thread0 is for swapper
+- only have event_records, when to create a new state_record?
+
+
 Get timestamps from metadata and not have to traverse all events.
 Get #CPUs and threads from metadata and not have to traverse all events.
 Event parameters.
