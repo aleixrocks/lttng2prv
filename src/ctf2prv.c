@@ -53,7 +53,6 @@ struct Events
 {
 	uint64_t id;
 	char *name;
-	char *fields;
 	struct Events *next;
 };
 
@@ -250,7 +249,7 @@ gboolean iterTree(GNode *n, gpointer data)
 	return FALSE;
 }
 
-void getThreadInfo(struct bt_context *ctx, GHashTable *tid_info_ht, GHashTable *tid_prv_ht)
+void getThreadInfo(struct bt_context *ctx, GHashTable *tid_info_ht, GHashTable *tid_prv_ht, GList *tid_prv_l)
 {
 	gint tid, pid, ppid;
 	char name[16];
@@ -267,8 +266,6 @@ void getThreadInfo(struct bt_context *ctx, GHashTable *tid_info_ht, GHashTable *
 	trace_times.first_stream_timestamp = 0;
 	trace_times.last_stream_timestamp = 0;
 	offset = 0;
-
-//	GList *info_l = NULL;
 
 	const struct bt_definition *scope;
 
@@ -306,19 +303,14 @@ void getThreadInfo(struct bt_context *ctx, GHashTable *tid_info_ht, GHashTable *
 
 			strcpy(name, bt_ctf_get_char_array(bt_ctf_get_field(event, scope, "_name")));
 
-//			info_l = g_list_append(info_l, GINT_TO_POINTER(tid));
-//			info_l = g_list_append(info_l, GINT_TO_POINTER(pid));
-//			info_l = g_list_append(info_l, GINT_TO_POINTER(ppid));
-//			info_l = g_list_append(info_l, name);
-//			info_l = g_list_first(info_l);
-
 //			if (ppid != 2 && pid != 2)
 //			{
 				// Insert thread info into hash table
 			if (g_hash_table_insert(tid_info_ht, GINT_TO_POINTER(tid), g_strdup(name)))
 			{
-				//printf("%d - %d\n", tid, prvtid);
+//				printf("%d - %d - %s\n", tid, prvtid, name);
 				g_hash_table_insert(tid_prv_ht, GINT_TO_POINTER(tid), GINT_TO_POINTER(prvtid));
+				tid_prv_l = g_list_append(tid_prv_l, GINT_TO_POINTER(tid));
 				prvtid++;
 			}
 //			}
@@ -331,8 +323,9 @@ void getThreadInfo(struct bt_context *ctx, GHashTable *tid_info_ht, GHashTable *
 			strcpy(name, bt_ctf_get_char_array(bt_ctf_get_field(event, scope, "_next_comm")));
 			if(g_hash_table_insert(tid_info_ht, GINT_TO_POINTER(tid), g_strdup(name)))
 			{
-				//printf("%d - %d\n", tid, prvtid);
+				//printf("%d - %d - %s\n", tid, prvtid, name);
 				g_hash_table_insert(tid_prv_ht, GINT_TO_POINTER(tid), GINT_TO_POINTER(prvtid));
+				tid_prv_l = g_list_append(tid_prv_l, GINT_TO_POINTER(tid));
 				prvtid++;
 			}
 		}
@@ -384,20 +377,29 @@ void printPRVHeader(struct bt_context *ctx, FILE *fp, GHashTable *tid_info_ht)
 	fprintf(fp, "\n");
 }
 
-void printROW(FILE *fp, GHashTable *tid_info_ht)
+void printROW(FILE *fp, GHashTable *tid_info_ht, GList *tid_prv_l)
 {
 //	int prvtid = 1;
 	GHashTableIter ht_iter;
 	gpointer key, value;
 	g_hash_table_iter_init(&ht_iter, tid_info_ht);
 
+	printf("%d\n", g_list_length(tid_prv_l));
+
 	fprintf(fp, "LEVEL APPL SIZE %d\n", g_hash_table_size(tid_info_ht));
 	
-	while (g_hash_table_iter_next(&ht_iter, &key, &value))
-	{
+//	while (g_hash_table_iter_next(&ht_iter, &key, &value))
+//	{
 //		fprintf(fp, "THREAD %d.1.1\t%s\n", prvtid, (const char *)value);
-		fprintf(fp, "%s\n", (const char *)value);
+//		fprintf(fp, "%s\n", (const char *)value);
 //		prvtid++;
+//	}
+
+	while (tid_prv_l != NULL)
+	{
+		value = g_hash_table_lookup(tid_info_ht, tid_prv_l->data);
+		fprintf(fp, "%s\n", (const char *)value);
+		tid_prv_l = tid_prv_l->next;
 	}
 }
 
@@ -785,6 +787,7 @@ int main(int argc, char **argv)
 
 	GHashTable *tid_info_ht = g_hash_table_new(g_direct_hash, g_direct_equal);
 	GHashTable *tid_prv_ht = g_hash_table_new(g_direct_hash, g_direct_equal);
+	GList *tid_prv_l = NULL;
 
 	if (!opt_output)
 	{
@@ -845,10 +848,10 @@ int main(int argc, char **argv)
 //	iter_trace(ctx, prv, app_pid_ht, pid_app_ht, tid_pid_ht, conv_ht);
 //	list_events(ctx, pcf);
 
-	getThreadInfo(ctx, tid_info_ht, tid_prv_ht);
+	getThreadInfo(ctx, tid_info_ht, tid_prv_ht, tid_prv_l);
 	printPRVHeader(ctx, prv, tid_info_ht);
 	printPCFHeader(pcf);
-	printROW(row, tid_info_ht);
+	printROW(row, tid_info_ht, tid_prv_l);
 
 	/* This two, have to be in this order, if not we remove the string
 	 * syscall_entry_ before traversing the trace and the events don't

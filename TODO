@@ -1,6 +1,7 @@
 Get #CPUs and threads from metadata and not have to traverse all events.
 Event parameters.
 Paraver apps doesn't seem to coincide with TraceCompass
+	- Tried GList to save relation instead of ghashtable. Appears empty in printROW, why?
 
 Jesus comments
 //* Solo aparecen 16 threads y en la traza original habia muchisimos, no? En el formato de paraver se puede poner el identificador de aplicacion, proceso y thread en cada record ademas de un campo de CPU. Tendrias que intentar mapear los records usando estos conceptos.
