@@ -1,4 +1,4 @@
-CFLAGS=-Wall -g
+#CFLAGS=-Wall -g
 #DIMEMAS_HOME=/home/emercada/soft/src/dimemas
 #DIMEMAS_LIBS+=$(DIMEMAS_HOME)/Simulator/prv_utils/paraver.o
 #DIMEMAS_LIBS+=$(DIMEMAS_HOME)/Simulator/prv_utils/external_sort.o

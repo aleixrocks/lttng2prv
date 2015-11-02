@@ -249,7 +249,7 @@ gboolean iterTree(GNode *n, gpointer data)
 	return FALSE;
 }
 
-void getThreadInfo(struct bt_context *ctx, GHashTable *tid_info_ht, GHashTable *tid_prv_ht, GList **tid_prv_l, GHashTable *irq_name_ht, uint32_t *nsoftirqs)
+void getThreadInfo(struct bt_context *ctx, GHashTable *tid_info_ht, GHashTable *tid_prv_ht, GList **tid_prv_l, GHashTable *irq_name_ht, uint32_t *nsoftirqs, GHashTable *irq_prv_ht)
 {
 	gint tid, pid, ppid;
 	char name[16];
@@ -263,6 +263,7 @@ void getThreadInfo(struct bt_context *ctx, GHashTable *tid_info_ht, GHashTable *
 	int flags;
 	int ret = 0;
 	uint prvtid = 1;
+	uint irqprv = 1;
 
 	trace_times.first_stream_timestamp = 0;
 	trace_times.last_stream_timestamp = 0;
@@ -344,7 +345,11 @@ void getThreadInfo(struct bt_context *ctx, GHashTable *tid_info_ht, GHashTable *
 			tid = bt_get_signed_int(bt_ctf_get_field(event, scope, "_irq"));
 			irqname = (char *) malloc(sizeof(char *) * strlen(bt_ctf_get_string(bt_ctf_get_field(event, scope, "_name"))));
 			strcpy(irqname, bt_ctf_get_string(bt_ctf_get_field(event, scope, "_name")));
-			g_hash_table_insert(irq_name_ht, GINT_TO_POINTER(tid), g_strdup(irqname));
+			if(g_hash_table_insert(irq_name_ht, GINT_TO_POINTER(tid), g_strdup(irqname)))
+			{
+				g_hash_table_insert(irq_prv_ht, GINT_TO_POINTER(tid), GINT_TO_POINTER(irqprv));
+				irqprv++;
+			}
 		}
 
 		ret = bt_iter_next(bt_ctf_get_iter(iter));
@@ -395,14 +400,14 @@ void printPRVHeader(struct bt_context *ctx, FILE *fp, GHashTable *tid_info_ht, i
 	fprintf(fp, "\n");
 }
 
-void printROW(FILE *fp, GHashTable *tid_info_ht, GList *tid_prv_l, GHashTable *irq_name_ht, int nsoftirqs)
+void printROW(FILE *fp, GHashTable *tid_info_ht, GList *tid_prv_l, GHashTable *irq_name_ht, uint32_t nsoftirqs)
 {
 	uint32_t NCPUS = 16;
 	gpointer key, value;
 	int rcount = 0;
 	GHashTableIter iterirq;
 
-	fprintf(fp, "LEVEL CPU SIZE %d\n", NCPUS + g_hash_table_size(irq_name_ht));
+	fprintf(fp, "LEVEL CPU SIZE %d\n", NCPUS + nsoftirqs + g_hash_table_size(irq_name_ht));
 	while (rcount < NCPUS)
 	{
 		fprintf(fp, "CPU %d\n", rcount + 1);
@@ -433,7 +438,7 @@ void printROW(FILE *fp, GHashTable *tid_info_ht, GList *tid_prv_l, GHashTable *i
 }
 
 // Iterates through all events of the trace
-void iter_trace(struct bt_context *bt_ctx, FILE *fp, GHashTable *tid_info_ht, GHashTable *tid_prv_ht, GHashTable *irq_name_ht)
+void iter_trace(struct bt_context *bt_ctx, FILE *fp, GHashTable *tid_info_ht, GHashTable *tid_prv_ht, GHashTable *irq_name_ht, GHashTable *irq_prv_ht, uint32_t nsoftirqs)
 {
 	unsigned int NCPUS = 16;
 	struct bt_ctf_iter *iter;
@@ -444,7 +449,7 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp, GHashTable *tid_info_ht, GH
 	int ret = 0;
 	int flags;
 	uint64_t appl_id, task_id, thread_id, init_time, end_time, state, event_time;
-	uint32_t cpu_id;
+	uint32_t cpu_id, irq_id;
 	//, stream_id, prev_stream_id = -1;
 	uint64_t event_type, event_value, offset_stream;
 	//uint32_t old_cpu_id = -1;
@@ -616,9 +621,12 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp, GHashTable *tid_info_ht, GH
 		if (strstr(event_name, "syscall") != NULL)
 		{
 			event_type = 10000000; 
-		}else if ((strstr(event_name, "softirq") != NULL) || (strstr(event_name, "irq_handler") != NULL))
+		}else if (strstr(event_name, "softirq") != NULL)
 		{
 			event_type = 11000000;
+		}else if (strstr(event_name, "irq_handler") != NULL)
+		{
+			event_type = 12000000;
 		}else
 		{
 			event_type = 19000000;
@@ -638,18 +646,20 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp, GHashTable *tid_info_ht, GH
 //			fprintf(fp, "1:%u:%" PRIu64 ":%u:%u:%" PRIu64 ":%" PRIu64 ":%" PRIu64 "\n", cpu_id + 1, appl_id, 1, 1, init_time, end_time, state);
 		}else	if (strcmp(event_name, "irq_handler_entry") == 0)
 		{
-			// TODO
-			cpu_id = NCPUS - 1 + 10;
-			appl_id = 0;
+			scope = bt_ctf_get_top_level_scope(event, BT_EVENT_FIELDS);
+			irq_id = bt_get_signed_int(bt_ctf_get_field(event, scope, "_irq"));
+			cpu_id = NCPUS + nsoftirqs + GPOINTER_TO_INT(g_hash_table_lookup(irq_prv_ht, GINT_TO_POINTER(irq_id)));
+			appl_id = 1;
 			task_id = 1;
 			thread_id = 1;
 			handler_entry++;
 		}else	if (strcmp(event_name, "irq_handler_exit") == 0)
 		{
-			// TODO
 			event_value = 0;
-			cpu_id = NCPUS - 1 + 10;
-			appl_id = 0;
+			scope = bt_ctf_get_top_level_scope(event, BT_EVENT_FIELDS);
+			irq_id = bt_get_signed_int(bt_ctf_get_field(event, scope, "_irq"));
+			cpu_id = NCPUS + nsoftirqs + GPOINTER_TO_INT(g_hash_table_lookup(irq_prv_ht, GINT_TO_POINTER(irq_id)));
+			appl_id = 1;
 			task_id = 1;
 			thread_id = 1;
 			handler_exit++;
@@ -703,7 +713,6 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp, GHashTable *tid_info_ht, GH
 end_iter:
 	bt_ctf_iter_destroy(iter);
 
-	printf("soft_raise = %d, soft_entry = %d, soft_exit = %d\n", softirq_raise, softirq_entry, softirq_exit);
 	printf("handler_entry = %d, handler_exit = %d\n", handler_entry, handler_exit);
 }
 
@@ -738,8 +747,10 @@ void list_events(struct bt_context *bt_ctx, FILE *fp)
 	struct Events *syscalls;
 	struct Events *kerncalls_root;
 	struct Events *kerncalls;
-	struct Events *irqs_root;
-	struct Events *irqs;
+	struct Events *softirqs_root;
+	struct Events *softirqs;
+	struct Events *irqhandler_root;
+	struct Events *irqhandler;
 
 	syscalls_root = (struct Events *) malloc(sizeof(struct Events));
 	syscalls_root->next = NULL;
@@ -749,9 +760,13 @@ void list_events(struct bt_context *bt_ctx, FILE *fp)
 	kerncalls_root->next = NULL;
 	kerncalls = kerncalls_root;
 
-	irqs_root = (struct Events *) malloc(sizeof(struct Events));
-	irqs_root->next = NULL;
-	irqs = irqs_root;
+	softirqs_root = (struct Events *) malloc(sizeof(struct Events));
+	softirqs_root->next = NULL;
+	softirqs = softirqs_root;
+
+	irqhandler_root = (struct Events *) malloc(sizeof(struct Events));
+	irqhandler_root->next = NULL;
+	irqhandler = irqhandler_root;
 
 	bt_ctf_get_event_decl_list(0, bt_ctx, &list, &cnt);
 	for (i = 0; i < cnt; i++)
@@ -771,14 +786,22 @@ void list_events(struct bt_context *bt_ctx, FILE *fp)
  			syscalls->next = (struct Events *) malloc(sizeof(struct Events));
  			syscalls = syscalls->next;
  			syscalls->next = NULL;
- 		} else if ((strstr(event_name, "softirq_raise") != NULL) || (strstr(event_name, "softirq_entry") != NULL) || (strstr(event_name, "irq_handler_entry") != NULL))
+ 		} else if ((strstr(event_name, "softirq_raise") != NULL) || (strstr(event_name, "softirq_entry") != NULL))
 		{
-			irqs->id = event_id;
-			irqs->name = (char *) malloc(strlen(event_name) + 1);
-			strncpy(irqs->name, event_name, strlen(event_name) + 1);
- 			irqs->next = (struct Events*) malloc(sizeof(struct Events));
- 			irqs = irqs->next;
- 			irqs->next = NULL;
+			softirqs->id = event_id;
+			softirqs->name = (char *) malloc(strlen(event_name) + 1);
+			strncpy(softirqs->name, event_name, strlen(event_name) + 1);
+ 			softirqs->next = (struct Events*) malloc(sizeof(struct Events));
+ 			softirqs = softirqs->next;
+ 			softirqs->next = NULL;
+		} else if (strstr(event_name, "irq_handler_entry") != NULL)
+		{
+			irqhandler->id = event_id;
+			irqhandler->name = (char *) malloc(strlen(event_name) + 1);
+			strncpy(irqhandler->name, event_name, strlen(event_name) + 1);
+ 			irqhandler->next = (struct Events*) malloc(sizeof(struct Events));
+ 			irqhandler = irqhandler->next;
+ 			irqhandler->next = NULL;
 		} else if ((strstr(event_name, "syscall_exit") == NULL) && (strstr(event_name, "softirq_exit") == NULL) && (strstr(event_name, "irq_handler_exit") == NULL))
  		{
  			kerncalls->id = event_id;
@@ -809,14 +832,26 @@ void list_events(struct bt_context *bt_ctx, FILE *fp)
 	fprintf(fp, "0\texit\n\n\n");
 
 	fprintf(fp, "EVENT_TYPE\n"
-			"0\t11000000\tIRQ\n"
+			"0\t11000000\tSOFTIRQ\n"
 			"VALUES\n");
 
-	irqs = irqs_root;
-	while(irqs->next != NULL)
+	softirqs = softirqs_root;
+	while(softirqs->next != NULL)
 	{
-		fprintf(fp, "%" PRIu64 "\t%s\n", irqs->id, irqs->name);
-		irqs = irqs->next;
+		fprintf(fp, "%" PRIu64 "\t%s\n", softirqs->id, softirqs->name);
+		softirqs = softirqs->next;
+	}
+	fprintf(fp, "0\texit\n\n\n");
+
+	fprintf(fp, "EVENT_TYPE\n"
+			"0\t12000000\tIRQ HANDLER\n"
+			"VALUES\n");
+
+	irqhandler = irqhandler_root;
+	while(irqhandler->next != NULL)
+	{
+		fprintf(fp, "%" PRIu64 "\t%s\n", irqhandler->id, irqhandler->name);
+		irqhandler = irqhandler->next;
 	}
 	fprintf(fp, "0\texit\n\n\n");
 
@@ -833,8 +868,8 @@ void list_events(struct bt_context *bt_ctx, FILE *fp)
 
 	free(syscalls_root);
 	free(syscalls);
-	free(irqs_root);
-	free(irqs);
+	free(softirqs_root);
+	free(softirqs);
 	free(kerncalls_root);
 	free(kerncalls);
 }
@@ -907,6 +942,7 @@ int main(int argc, char **argv)
 	GHashTable *tid_prv_ht = g_hash_table_new(g_direct_hash, g_direct_equal);
 	GList *tid_prv_l = NULL;
 	GHashTable *irq_name_ht = g_hash_table_new(g_direct_hash, g_direct_equal);
+	GHashTable *irq_prv_ht = g_hash_table_new(g_direct_hash, g_direct_equal);
 
 	if (!opt_output)
 	{
@@ -967,8 +1003,8 @@ int main(int argc, char **argv)
 //	iter_trace(ctx, prv, app_pid_ht, pid_app_ht, tid_pid_ht, conv_ht);
 //	list_events(ctx, pcf);
 
-	getThreadInfo(ctx, tid_info_ht, tid_prv_ht, &tid_prv_l, irq_name_ht, &nsoftirqs);
-	nresources = 16 + g_hash_table_size(irq_name_ht);
+	getThreadInfo(ctx, tid_info_ht, tid_prv_ht, &tid_prv_l, irq_name_ht, &nsoftirqs, irq_prv_ht);
+	nresources = 16 + nsoftirqs + g_hash_table_size(irq_name_ht);
 	printPRVHeader(ctx, prv, tid_info_ht, nresources);
 	printPCFHeader(pcf);
 	printROW(row, tid_info_ht, tid_prv_l, irq_name_ht, nsoftirqs);
@@ -977,11 +1013,18 @@ int main(int argc, char **argv)
 	 * syscall_entry_ before traversing the trace and the events don't
 	 * get listed properly.
 	 */
-	iter_trace(ctx, prv, tid_info_ht, tid_prv_ht, irq_name_ht);
+	iter_trace(ctx, prv, tid_info_ht, tid_prv_ht, irq_name_ht, irq_prv_ht, nsoftirqs);
 	list_events(ctx, pcf);
 
 end:
 	bt_context_put(ctx);
+
+	g_hash_table_destroy(tid_info_ht);
+	g_hash_table_destroy(tid_prv_ht);
+	g_list_free(tid_prv_l);
+	g_hash_table_destroy(irq_name_ht);
+	g_hash_table_destroy(irq_prv_ht);
+
 	fflush(prv);
 	fflush(pcf);
 	fflush(row);
