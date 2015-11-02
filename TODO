@@ -1,4 +1,4 @@
-IRQ_handlers
+SoftIRQs OK, check IRQ_handlers
 Get #CPUs and threads from metadata and not have to traverse all events.
 Event parameters.
 
