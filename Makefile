@@ -6,7 +6,7 @@ LIBS=-lbabeltrace -lbabeltrace-ctf -lpopt -I/usr/include/glib-2.0 -I/usr/lib/x86
 
 all:
 	mkdir -p bin
-	gcc src/ctf2prv.c -o bin/ctf2prv ${LIBS}
+	gcc ${CFLAGS} src/ctf2prv.c -o bin/ctf2prv ${LIBS}
 
 clean:
 	rm -r bin

@@ -249,13 +249,13 @@ gboolean iterTree(GNode *n, gpointer data)
 	return FALSE;
 }
 
-void getThreadInfo(struct bt_context *ctx, GHashTable *tid_info_ht, GHashTable *tid_prv_ht, GList **tid_prv_l, GHashTable *irq_name_ht, int *nsoftirqs)
+void getThreadInfo(struct bt_context *ctx, GHashTable *tid_info_ht, GHashTable *tid_prv_ht, GList **tid_prv_l, GHashTable *irq_name_ht, uint32_t *nsoftirqs)
 {
 	gint tid, pid, ppid;
 	char name[16];
 	char *irqname;
 
-	uint64_t init_time_old, end_time_old;
+//	uint64_t init_time_old, end_time_old;
 
 	struct bt_iter_pos begin_pos;
 	struct bt_ctf_iter *iter;
@@ -331,14 +331,14 @@ void getThreadInfo(struct bt_context *ctx, GHashTable *tid_info_ht, GHashTable *
 			}
 		}
 
-		if (strstr(bt_ctf_event_name(event), "softirq_entry") != NULL)
+		if (strcmp(bt_ctf_event_name(event), "softirq_entry") == 0)
 		{
 			scope = bt_ctf_get_top_level_scope(event, BT_EVENT_FIELDS);
 			tid = bt_get_unsigned_int(bt_ctf_get_field(event, scope, "_vec"));
 			if (tid > *nsoftirqs) *nsoftirqs = tid;
 		}
 
-		if (strstr(bt_ctf_event_name(event), "irq_handler_entry") != NULL)
+		if (strcmp(bt_ctf_event_name(event), "irq_handler_entry") == 0)
 		{
 			scope = bt_ctf_get_top_level_scope(event, BT_EVENT_FIELDS);
 			tid = bt_get_signed_int(bt_ctf_get_field(event, scope, "_irq"));
@@ -439,18 +439,22 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp, GHashTable *tid_info_ht, GH
 	struct bt_ctf_iter *iter;
 	struct bt_iter_pos begin_pos;
 	struct bt_ctf_event *event;
-	char *prev_comm;
+	//char *prev_comm;
 	const struct bt_definition *scope;
 	int ret = 0;
 	int flags;
 	uint64_t appl_id, task_id, thread_id, init_time, end_time, state, event_time;
-	uint32_t cpu_id, stream_id, prev_stream_id = -1;
+	uint32_t cpu_id;
+	//, stream_id, prev_stream_id = -1;
 	uint64_t event_type, event_value, offset_stream;
-	uint32_t old_cpu_id = -1;
+	//uint32_t old_cpu_id = -1;
 	uint64_t cpu_thread[NCPUS];
 	unsigned int i = 0;
 	char *event_name;
 	uint32_t systemTID, prvTID, swapper;
+
+	uint32_t handler_entry = 0;
+	uint32_t handler_exit = 0;
 
 	for (i = 0; i<16; i++)
 	{
@@ -549,7 +553,7 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp, GHashTable *tid_info_ht, GH
 			init_time = end_time;
 		}
 
-		if (strstr(event_name, "syscall_entry") != NULL)
+		if (strcmp(event_name, "syscall_entry") == 0)
 		{
 			offset_stream = trace_times.first_stream_timestamp;
 //			scope = bt_ctf_get_top_level_scope(event, BT_STREAM_PACKET_CONTEXT);
@@ -565,7 +569,7 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp, GHashTable *tid_info_ht, GH
 			init_time = end_time;
 		}
 
-		if (strstr(event_name, "syscall_exit") != NULL)
+		if (strcmp(event_name, "syscall_exit") == 0)
 		{
 			offset_stream = trace_times.first_stream_timestamp;
 //			scope = bt_ctf_get_top_level_scope(event, BT_STREAM_PACKET_CONTEXT);
@@ -627,48 +631,43 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp, GHashTable *tid_info_ht, GH
 			state = 4;
 //			fprintf(fp, "1:%u:%" PRIu64 ":%u:%u:%" PRIu64 ":%" PRIu64 ":%" PRIu64 "\n", cpu_id + 1, appl_id, 1, 1, init_time, end_time, state);
 
-		}
-
-		if (strstr(event_name, "syscall_exit_") != NULL)
+		}else if (strstr(event_name, "syscall_exit_") != NULL)
 		{
 			event_value = 0;
 			state = 2;
 //			fprintf(fp, "1:%u:%" PRIu64 ":%u:%u:%" PRIu64 ":%" PRIu64 ":%" PRIu64 "\n", cpu_id + 1, appl_id, 1, 1, init_time, end_time, state);
-		}
-
-		if (strstr(event_name, "irq_handler_exit") != NULL)
+		}else	if (strcmp(event_name, "irq_handler_entry") == 0)
 		{
+			// TODO
+			cpu_id = NCPUS - 1 + 10;
+			appl_id = 0;
+			task_id = 1;
+			thread_id = 1;
+			handler_entry++;
+		}else	if (strcmp(event_name, "irq_handler_exit") == 0)
+		{
+			// TODO
 			event_value = 0;
-		}
-
-		if (strstr(event_name, "softirq_raise") != NULL)
+			cpu_id = NCPUS - 1 + 10;
+			appl_id = 0;
+			task_id = 1;
+			thread_id = 1;
+			handler_exit++;
+		}else if (strcmp(event_name, "softirq_raise") == 0)
+		{
+			appl_id = 0;
+		}else	if (strcmp(event_name, "softirq_entry") == 0)
 		{
 			scope = bt_ctf_get_top_level_scope(event, BT_EVENT_FIELDS);
 			cpu_id = NCPUS - 1 + bt_get_unsigned_int(bt_ctf_get_field(event, scope, "_vec"));
-			printf("raise, cpu %d\n", cpu_id);
 			appl_id = 1;
 			task_id = 1;
 			thread_id = 1;
-		}
-
-		if (strstr(event_name, "softirq_entry") != NULL)
-		{
-//			fprintf(fp, "2:%u:%" PRIu64 ":%u:%u:%" PRIu64 ":%" PRIu64 ":%" PRIu64 "\n", cpu_id + 1, appl_id, 1, 1, event_time, event_type, event_value);
-			scope = bt_ctf_get_top_level_scope(event, BT_EVENT_FIELDS);
-			cpu_id = NCPUS - 1 + bt_get_unsigned_int(bt_ctf_get_field(event, scope, "_vec"));
-			printf("entry, cpu %d\n", cpu_id);
-			appl_id = 1;
-			task_id = 1;
-			thread_id = 1;
-		}
-
-		if (strstr(event_name, "softirq_exit") != NULL)
+		}else	if (strcmp(event_name, "softirq_exit") == 0)
 		{
 			event_value = 0;
-//			fprintf(fp, "2:%u:%" PRIu64 ":%u:%u:%" PRIu64 ":%" PRIu64 ":%" PRIu64 "\n", cpu_id + 1, appl_id, 1, 1, event_time, event_type, event_value);
 			scope = bt_ctf_get_top_level_scope(event, BT_EVENT_FIELDS);
 			cpu_id = NCPUS - 1 + bt_get_unsigned_int(bt_ctf_get_field(event, scope, "_vec"));
-			printf("exit, cpu %d\n", cpu_id);
 			appl_id = 1;
 			task_id = 1;
 			thread_id = 1;
@@ -703,6 +702,9 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp, GHashTable *tid_info_ht, GH
 
 end_iter:
 	bt_ctf_iter_destroy(iter);
+
+	printf("soft_raise = %d, soft_entry = %d, soft_exit = %d\n", softirq_raise, softirq_entry, softirq_exit);
+	printf("handler_entry = %d, handler_exit = %d\n", handler_entry, handler_exit);
 }
 
 // Removes substring torm from input string dest
@@ -793,7 +795,7 @@ void list_events(struct bt_context *bt_ctx, FILE *fp)
 			"VALUES\n");
 
  	syscalls = syscalls_root;
-	uint32_t syscalltype; 
+//	uint32_t syscalltype; 
  	while(syscalls->next != NULL)
  	{
  		fprintf(fp, "%" PRIu64 "\t%s\n", syscalls->id, syscalls->name);
@@ -893,9 +895,9 @@ void printPCFHeader(FILE *fp)
 int main(int argc, char **argv)
 {
 	int ret = 0;
-	const char *format_str;
+//	const char *format_str;
 	struct bt_context *ctx;
-	struct bt_iter_pos begin_pos;
+//	struct bt_iter_pos begin_pos;
 	int nresources;
 	uint32_t nsoftirqs = 0;
 
@@ -908,26 +910,26 @@ int main(int argc, char **argv)
 
 	if (!opt_output)
 	{
-		prv = fopen("trace.prv", "w+");
+		prv = fopen("trace.prv", "w");
 	}else
 	{
-		prv = fopen(opt_output, "w+");
+		prv = fopen(opt_output, "w");
 	}
 
 	if (!opt_output)
 	{
-		pcf = fopen("trace.pcf", "w+");
+		pcf = fopen("trace.pcf", "w");
 	}else
 	{
-		pcf = fopen(opt_output, "w+");
+		pcf = fopen(opt_output, "w");
 	}
 
 	if (!opt_output)
 	{
-		row = fopen("trace.row", "w+");
+		row = fopen("trace.row", "w");
 	}else
 	{
-		row = fopen(opt_output, "w+");
+		row = fopen(opt_output, "w");
 	}
 
 	ret = parse_options(argc, argv);
