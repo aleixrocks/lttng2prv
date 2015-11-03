@@ -94,7 +94,7 @@ static int parse_options(int argc, char **argv)
 				if (!opt_output)
 				{
 					fprintf(stderr, "Wrong file name\n");
-					opt = -1;
+					//opt = -1;
 					ret = -EINVAL;
 				}
 				break;
@@ -118,8 +118,10 @@ static int parse_options(int argc, char **argv)
 		ret = -EINVAL;
 	}
 
-	if (pc)	poptFreeContext(pc);
-
+	if (pc)
+	{
+		poptFreeContext(pc);
+	}
 	return ret;
 }
 
@@ -307,17 +309,13 @@ void getThreadInfo(struct bt_context *ctx, GHashTable *tid_info_ht, GHashTable *
 
 			strcpy(name, bt_ctf_get_char_array(bt_ctf_get_field(event, scope, "_name")));
 
-//			if (ppid != 2 && pid != 2)
-//			{
-				// Insert thread info into hash table
+			// Insert thread info into hash table
 			if (g_hash_table_insert(tid_info_ht, GINT_TO_POINTER(tid), g_strdup(name)))
 			{
-//				printf("%d - %d - %s\n", tid, prvtid, name);
 				g_hash_table_insert(tid_prv_ht, GINT_TO_POINTER(tid), GINT_TO_POINTER(prvtid));
 				*tid_prv_l = g_list_append(*tid_prv_l, GINT_TO_POINTER(tid));
 				prvtid++;
 			}
-//			}
 		}
 
 		if (strstr(bt_ctf_event_name(event), "sched_switch") != NULL)
@@ -327,7 +325,6 @@ void getThreadInfo(struct bt_context *ctx, GHashTable *tid_info_ht, GHashTable *
 			strcpy(name, bt_ctf_get_char_array(bt_ctf_get_field(event, scope, "_next_comm")));
 			if(g_hash_table_insert(tid_info_ht, GINT_TO_POINTER(tid), g_strdup(name)))
 			{
-				//printf("%d - %d - %s\n", tid, prvtid, name);
 				g_hash_table_insert(tid_prv_ht, GINT_TO_POINTER(tid), GINT_TO_POINTER(prvtid));
 				*tid_prv_l = g_list_append(*tid_prv_l, GINT_TO_POINTER(tid));
 				prvtid++;
@@ -447,15 +444,12 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp, GHashTable *tid_info_ht, GH
 	struct bt_ctf_iter *iter;
 	struct bt_iter_pos begin_pos;
 	struct bt_ctf_event *event;
-	//char *prev_comm;
 	const struct bt_definition *scope;
 	int ret = 0;
 	int flags;
 	uint64_t appl_id, task_id, thread_id, init_time, end_time, state, event_time;
 	uint32_t cpu_id, irq_id;
-	//, stream_id, prev_stream_id = -1;
 	uint64_t event_type, event_value, offset_stream;
-	//uint32_t old_cpu_id = -1;
 	uint64_t cpu_thread[NCPUS];
 	unsigned int i = 0;
 	char *event_name;
@@ -463,6 +457,10 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp, GHashTable *tid_info_ht, GH
 
 	uint32_t handler = 0;
 	uint32_t handler_exit = 0;
+
+	int64_t intval = 0;
+	uint64_t uintval = 0;
+	char fields[100];
 
 	for (i = 0; i<16; i++)
 	{
@@ -479,6 +477,7 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp, GHashTable *tid_info_ht, GH
 	end_time = 0;
 	appl_id = 0;
 	swapper = GPOINTER_TO_INT(g_hash_table_lookup(tid_prv_ht, GINT_TO_POINTER(0)));
+
 	while ((event = bt_ctf_iter_read_event_flags(iter, &flags)) != NULL)
 	{
 		scope = bt_ctf_get_top_level_scope(event, BT_STREAM_PACKET_CONTEXT);
@@ -522,7 +521,7 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp, GHashTable *tid_info_ht, GH
 			}
 			appl_id = prvTID;
 
-			fprintf(fp, "1:%u:%" PRIu64 ":%u:%u:%" PRIu64 ":%" PRIu64 ":%" PRIu64 "\n", cpu_id + 1, appl_id, 1, 1, init_time, end_time, state);
+//			fprintf(fp, "1:%u:%" PRIu64 ":%u:%u:%" PRIu64 ":%" PRIu64 ":%" PRIu64 "\n", cpu_id + 1, appl_id, 1, 1, init_time, end_time, state);
 
 			state = 2;
 			scope = bt_ctf_get_top_level_scope(event, BT_EVENT_FIELDS);
@@ -534,7 +533,7 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp, GHashTable *tid_info_ht, GH
 			}
 			appl_id = prvTID;
 
-			fprintf(fp, "1:%u:%" PRIu64 ":%u:%u:%" PRIu64 ":%" PRIu64 ":%" PRIu64 "\n", cpu_id + 1, appl_id, 1, 1, init_time, end_time, state);
+//			fprintf(fp, "1:%u:%" PRIu64 ":%u:%u:%" PRIu64 ":%" PRIu64 ":%" PRIu64 "\n", cpu_id + 1, appl_id, 1, 1, init_time, end_time, state);
 			init_time = end_time;
 		}
 
@@ -557,7 +556,7 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp, GHashTable *tid_info_ht, GH
 			}
 			appl_id = prvTID;
 
-			fprintf(fp, "1:%u:%" PRIu64 ":%u:%u:%" PRIu64 ":%" PRIu64 ":%" PRIu64 "\n", cpu_id + 1, appl_id, 1, 1, init_time, end_time, state);
+//			fprintf(fp, "1:%u:%" PRIu64 ":%u:%u:%" PRIu64 ":%" PRIu64 ":%" PRIu64 "\n", cpu_id + 1, appl_id, 1, 1, init_time, end_time, state);
 			init_time = end_time;
 		}
 
@@ -573,7 +572,7 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp, GHashTable *tid_info_ht, GH
 
 			appl_id = prvTID;
 
-			fprintf(fp, "1:%u:%" PRIu64 ":%u:%u:%" PRIu64 ":%" PRIu64 ":%" PRIu64 "\n", cpu_id + 1, appl_id, 1, 1, init_time, end_time, state);
+//			fprintf(fp, "1:%u:%" PRIu64 ":%u:%u:%" PRIu64 ":%" PRIu64 ":%" PRIu64 "\n", cpu_id + 1, appl_id, 1, 1, init_time, end_time, state);
 			init_time = end_time;
 		}
 
@@ -589,23 +588,9 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp, GHashTable *tid_info_ht, GH
 
 			appl_id = prvTID;
 
-			fprintf(fp, "1:%u:%" PRIu64 ":%u:%u:%" PRIu64 ":%" PRIu64 ":%" PRIu64 "\n", cpu_id + 1, appl_id, 1, 1, init_time, end_time, state);
+//			fprintf(fp, "1:%u:%" PRIu64 ":%u:%u:%" PRIu64 ":%" PRIu64 ":%" PRIu64 "\n", cpu_id + 1, appl_id, 1, 1, init_time, end_time, state);
 			init_time = end_time;
 		}
-
-//		if (strstr(event_name, "softirq_raise") != NULL)
-//		{
-//			offset_stream = trace_times.first_stream_timestamp;
-//			state = 6;
-//			scope = bt_ctf_get_top_level_scope(event, BT_EVENT_FIELDS);
-//			cpu_id = NCPUS + bt_get_unsigned_int(bt_ctf_get_field(event, scope, "_vec"));
-//			appl_id = 1;
-//			task_id = 1;
-//			thread_id = 1;
-//			end_time = bt_ctf_get_timestamp(event) - offset - offset_stream;
-//			fprintf(fp, "1:%u:%" PRIu64 ":%u:%u:%" PRIu64 ":%" PRIu64 ":%" PRIu64 "\n", cpu_id, appl_id, 1, 1, init_time, end_time, state);
-//			init_time = end_time;
-//		}
 
 /**************************** /State Records **************************/
 
@@ -621,34 +606,23 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp, GHashTable *tid_info_ht, GH
 		scope = bt_ctf_get_top_level_scope(event, BT_STREAM_PACKET_CONTEXT);
 		event_time = bt_ctf_get_timestamp(event) - offset - offset_stream;
 
-		if (strstr(event_name, "syscall") != NULL)
-		{
-			event_type = 10000000; 
-		}else if (strstr(event_name, "softirq") != NULL)
-		{
-			event_type = 11000000;
-		}else if (strstr(event_name, "irq_handler") != NULL)
-		{
-			event_type = 12000000;
-		}else
-		{
-			event_type = 19000000;
-		}
-
 		scope = bt_ctf_get_top_level_scope(event, BT_STREAM_EVENT_HEADER);
 		event_value = bt_ctf_get_uint64(bt_ctf_get_enum_int(bt_ctf_get_field(event, scope, "id")));
 		if (strstr(event_name, "syscall_entry_") != NULL)
 		{
+			event_type = 10000000;
 			state = 4;
-//			fprintf(fp, "1:%u:%" PRIu64 ":%u:%u:%" PRIu64 ":%" PRIu64 ":%" PRIu64 "\n", cpu_id + 1, appl_id, 1, 1, init_time, end_time, state);
-
 		}else if (strstr(event_name, "syscall_exit_") != NULL)
 		{
+			event_type = 10000000;
 			event_value = 0;
 			state = 2;
-//			fprintf(fp, "1:%u:%" PRIu64 ":%u:%u:%" PRIu64 ":%" PRIu64 ":%" PRIu64 "\n", cpu_id + 1, appl_id, 1, 1, init_time, end_time, state);
 		} else if (strstr(event_name, "irq_handler_") != NULL)
 		{
+			event_type = 12000000;
+			appl_id = 1;
+			task_id = 1;
+			thread_id = 1;
 			if (strcmp(event_name, "irq_handler_exit") == 0)
 			{
 				event_value = 0;
@@ -657,28 +631,29 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp, GHashTable *tid_info_ht, GH
 			scope = bt_ctf_get_top_level_scope(event, BT_EVENT_FIELDS);
 			irq_id = bt_get_signed_int(bt_ctf_get_field(event, scope, "_irq"));
 			cpu_id = NCPUS + nsoftirqs + GPOINTER_TO_INT(g_hash_table_lookup(irq_prv_ht, GINT_TO_POINTER(irq_id))) - 1;
-			appl_id = 1;
-			task_id = 1;
-			thread_id = 1;
 			handler++;
 			if (verbose)
 			{
-				printf("%s\tIRQ: %d, PRVCPU: %d\ttime: %lu\n", event_name, irq_id, cpu_id + 1, event_time);
+				printf("%s\tIRQ: %d, CPU: %d, APPL: %lu\tt: %lu\n", event_name, irq_id, cpu_id + 1, appl_id, event_time);
 			}
 		}else if (strstr(event_name, "softirq_") != NULL)
 		{
+			event_type = 11000000;
 			appl_id = 1;
+			task_id = 1;
+			thread_id = 1;
 			if (strcmp(event_name, "softirq_raise") == 0)
 			{
-				appl_id = 0;
+				task_id = 0;
 			}else if (strcmp(event_name, "softirq_exit") == 0)
 			{
 				event_value = 0;
 			}
 			scope = bt_ctf_get_top_level_scope(event, BT_EVENT_FIELDS);
 			cpu_id = NCPUS - 1 + bt_get_unsigned_int(bt_ctf_get_field(event, scope, "_vec"));
-			task_id = 1;
-			thread_id = 1;
+		}else
+		{
+			event_type = 19000000;
 		}
 		
 /*****		 ID for value == 65536 in extended metadata		*****/
@@ -687,11 +662,43 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp, GHashTable *tid_info_ht, GH
 			event_value = bt_ctf_get_uint64(bt_ctf_get_struct_field_index(bt_ctf_get_field(event, scope, "v"), 0));
 		}
 
-		if (appl_id != 0)
+		// System Call Arguments
+		scope = bt_ctf_get_top_level_scope(event, BT_EVENT_FIELDS);
+		intval = bt_ctf_get_int64(bt_ctf_get_field(event, scope, "_ret"));
+		if (!bt_ctf_field_get_error())
 		{
-			fprintf(fp, "2:%u:%" PRIu64 ":%u:%u:%" PRIu64 ":%" PRIu64 ":%" PRIu64 "\n", cpu_id + 1, appl_id, 1, 1, event_time, event_type, event_value);
-			//fprintf(fp, "1:%u:%" PRIu64 ":%u:%u:%" PRIu64 ":%" PRIu64 ":%" PRIu64 "\n", cpu_id + 1, appl_id, 1, 1, init_time, end_time, state);
+			sprintf(fields + strlen(fields), ":20000000:%li", intval);
 		}
+
+		uintval = bt_ctf_get_uint64(bt_ctf_get_field(event, scope, "_fd"));
+		if (!bt_ctf_field_get_error())
+		{
+			sprintf(fields + strlen(fields), ":20000001:%lu", uintval);
+		}
+
+		uintval = bt_ctf_get_uint64(bt_ctf_get_field(event, scope, "_size"));
+		if (!bt_ctf_field_get_error())
+		{
+			sprintf(fields + strlen(fields), ":20000002:%lu", uintval);
+		}
+
+		uintval = bt_ctf_get_uint64(bt_ctf_get_field(event, scope, "_cmd"));
+		if (!bt_ctf_field_get_error())
+		{
+			sprintf(fields + strlen(fields), ":20000003:%lu", uintval);
+		}
+
+		uintval = bt_ctf_get_uint64(bt_ctf_get_field(event, scope, "_arg"));
+		if (!bt_ctf_field_get_error())
+		{
+			sprintf(fields + strlen(fields), ":20000004:%lu", uintval);
+		}
+
+		if (task_id != 0)
+		{
+			fprintf(fp, "2:%u:%" PRIu64 ":%u:%u:%" PRIu64 ":%" PRIu64 ":%" PRIu64 "%s\n", cpu_id + 1, appl_id, 1, 1, event_time, event_type, event_value, fields);
+		}
+		fields[0] = '\0';
 		free(event_name);
 
 
@@ -781,7 +788,7 @@ void list_events(struct bt_context *bt_ctx, FILE *fp)
 			/* Careful with this call, moves memory positions and may result
 			 * in malfunction. See comment at the end of main.
 			 */ 
- 			rmsubstr(event_name, "syscall_entry_");
+			rmsubstr(event_name, "syscall_entry_");
  			syscalls->name = (char *) malloc(strlen(event_name) + 1);
  			strncpy(syscalls->name, event_name, strlen(event_name) + 1);
  			syscalls->next = (struct Events *) malloc(sizeof(struct Events));
@@ -790,6 +797,7 @@ void list_events(struct bt_context *bt_ctx, FILE *fp)
  		} else if ((strstr(event_name, "softirq_raise") != NULL) || (strstr(event_name, "softirq_entry") != NULL))
 		{
 			softirqs->id = event_id;
+			rmsubstr(event_name, "_entry");
 			softirqs->name = (char *) malloc(strlen(event_name) + 1);
 			strncpy(softirqs->name, event_name, strlen(event_name) + 1);
  			softirqs->next = (struct Events*) malloc(sizeof(struct Events));
@@ -798,6 +806,7 @@ void list_events(struct bt_context *bt_ctx, FILE *fp)
 		} else if (strstr(event_name, "irq_handler_entry") != NULL)
 		{
 			irqhandler->id = event_id;
+			rmsubstr(event_name, "_entry");
 			irqhandler->name = (char *) malloc(strlen(event_name) + 1);
 			strncpy(irqhandler->name, event_name, strlen(event_name) + 1);
  			irqhandler->next = (struct Events*) malloc(sizeof(struct Events));
@@ -819,15 +828,9 @@ void list_events(struct bt_context *bt_ctx, FILE *fp)
 			"VALUES\n");
 
  	syscalls = syscalls_root;
-//	uint32_t syscalltype; 
  	while(syscalls->next != NULL)
  	{
  		fprintf(fp, "%" PRIu64 "\t%s\n", syscalls->id, syscalls->name);
-//		syscalltype = 10000000 + syscalls->id * 100;
-//		fprintf(fp, "EVENT_TYPE\n");
-//		fprintf(fp, "0\t%u\t%s\n", syscalltype, syscalls->name);
-//		fprintf(fp, "VALUES\n");
-//		fprintf(fp, "1\tfd\n\n"); 
  		syscalls = syscalls->next;
  	}
 	fprintf(fp, "0\texit\n\n\n");
@@ -857,7 +860,7 @@ void list_events(struct bt_context *bt_ctx, FILE *fp)
 	fprintf(fp, "0\texit\n\n\n");
 
 	fprintf(fp, "EVENT_TYPE\n"
-			"0\t19000000\tKernel Event\n"
+			"0\t19000000\tOthers\n"
 			"VALUES\n");
 
 	kerncalls = kerncalls_root;
@@ -866,6 +869,14 @@ void list_events(struct bt_context *bt_ctx, FILE *fp)
 		fprintf(fp, "%" PRIu64 "\t%s\n", kerncalls->id, kerncalls->name);
 		kerncalls = kerncalls->next;
 	}
+	fprintf(fp, "\n\n\n");
+
+	fprintf(fp, "EVENT_TYPE\n");
+	fprintf(fp,	"0\t20000000\treturn\n");
+	fprintf(fp, "0\t20000001\tfd\n");
+	fprintf(fp, "0\t20000002\tsize\n");
+	fprintf(fp,	"0\t20000003\tcmd\n");
+	fprintf(fp,	"0\t20000004\targ\n");
 
 	free(syscalls_root);
 	free(syscalls);
@@ -931,9 +942,7 @@ void printPCFHeader(FILE *fp)
 int main(int argc, char **argv)
 {
 	int ret = 0;
-//	const char *format_str;
 	struct bt_context *ctx;
-//	struct bt_iter_pos begin_pos;
 	int nresources;
 	uint32_t nsoftirqs = 0;
 
@@ -951,6 +960,7 @@ int main(int argc, char **argv)
 		prv = fopen("trace.prv", "w");
 	}else
 	{
+		strcat(opt_output, ".prv");
 		prv = fopen(opt_output, "w");
 	}
 
@@ -959,6 +969,7 @@ int main(int argc, char **argv)
 		pcf = fopen("trace.pcf", "w");
 	}else
 	{
+		strcat(opt_output, ".pcf");
 		pcf = fopen(opt_output, "w");
 	}
 
@@ -967,6 +978,7 @@ int main(int argc, char **argv)
 		row = fopen("trace.row", "w");
 	}else
 	{
+		strcat(opt_output, ".row");
 		row = fopen(opt_output, "w");
 	}
 
@@ -991,19 +1003,6 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Couldn't open trace \"%s\" for reading.\n", inputTrace);
 		goto end;
 	}
-
-//	getThreadData(ctx, pid_tid_ht, tid_pid_ht, app_pid_ht, pid_app_ht);
-//	normThreadData(pid_tid_ht, tid_pid_ht, conv_ht);
-//	printPRVHeader(ctx, prv, pid_tid_ht);
-//	printPCFHeader(pcf);
-//	printROW(row, pid_tid_ht);
-
-	/* This two, have to be in this order, if not we remove the string
-	 * syscall_entry_ before traversing the trace and the events don't
-	 * get listed properly.
-	 */
-//	iter_trace(ctx, prv, app_pid_ht, pid_app_ht, tid_pid_ht, conv_ht);
-//	list_events(ctx, pcf);
 
 	getThreadInfo(ctx, tid_info_ht, tid_prv_ht, &tid_prv_l, irq_name_ht, &nsoftirqs, irq_prv_ht, &irq_prv_l);
 	nresources = 16 + nsoftirqs + g_hash_table_size(irq_name_ht);

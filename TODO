@@ -1,5 +1,6 @@
+Add appl_id to IRQs
 Get #CPUs and threads from metadata and not have to traverse all events.
-Event parameters.
+--Event parameters.
 
 Jesus comments
 //* Solo aparecen 16 threads y en la traza original habia muchisimos, no? En el formato de paraver se puede poner el identificador de aplicacion, proceso y thread en cada record ademas de un campo de CPU. Tendrias que intentar mapear los records usando estos conceptos.
@@ -12,8 +13,8 @@ Jesus comments
 
 // * Los eventos sched_algo tienen informacion de cambios de contexto. Es lo que tienes que usar para determinar en que CPU esta cada thread.
 
-* Puedes generar mas cfgs? Duracion del las llamadas a sistema, Histograma de duracion, ....
+// * Puedes generar mas cfgs? Duracion del las llamadas a sistema, Histograma de duracion, ....
 
-* Tendrias que poner tambien alguno de los argumentos (fd, size, return value ...)
+// * Tendrias que poner tambien alguno de los argumentos (fd, size, return value ...)
 
 // * En las visualizaciones con tracecompass se ve unas lineas que corresponde a interrupciones hard y soft. Habria que ver como mapeamos estos records a Paraver 
