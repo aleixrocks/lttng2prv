@@ -26,6 +26,7 @@ enum
 {
 	OPT_NONE = 0,
 	OPT_OUTPUT,
+	OPT_VERBOSE,
 	OPT_HELP
 };
 
@@ -37,6 +38,7 @@ static struct bt_format *fmt_read;
 static struct poptOption long_options[] =
 {
 	{"output", 'o', POPT_ARG_STRING, NULL, OPT_OUTPUT, NULL, NULL },
+	{"verbose", 'v', POPT_ARG_NONE, NULL, OPT_VERBOSE, NULL, NULL },
 	{"help", 'h', POPT_ARG_NONE, NULL, OPT_HELP, NULL, NULL}
 };
 
@@ -56,12 +58,15 @@ struct Events
 	struct Events *next;
 };
 
+short int verbose = 0;
+
 static void print_usage(FILE *fp)
 {
 	fprintf(fp, "CTF2PRV trace converter \n\n");
 	fprintf(fp, "Usage: ctf2prv [OPTIONS] FILE\n");
 	fprintf(fp, "\tFILE                   Input trace file\n");
 //	fprintf(fp, "\t-o, --output OUTPUT    Output file name\n");
+	fprintf(fp, "\t-v, --verbose          Increase output\n");
 	fprintf(fp, "\t-h, --help             Show this help\n");
 	fprintf(fp, "\n");
 }
@@ -92,6 +97,10 @@ static int parse_options(int argc, char **argv)
 					opt = -1;
 					ret = -EINVAL;
 				}
+				break;
+			case OPT_VERBOSE:
+				verbose = 1;
+				ret = 1;
 				break;
 			case OPT_HELP:
 				print_usage(stdout);
@@ -242,14 +251,7 @@ error:
 	return BT_CB_ERROR_STOP;
 }
 
-
-gboolean iterTree(GNode *n, gpointer data)
-{
-	printf("%d\n", GPOINTER_TO_INT(n->data));
-	return FALSE;
-}
-
-void getThreadInfo(struct bt_context *ctx, GHashTable *tid_info_ht, GHashTable *tid_prv_ht, GList **tid_prv_l, GHashTable *irq_name_ht, uint32_t *nsoftirqs, GHashTable *irq_prv_ht)
+void getThreadInfo(struct bt_context *ctx, GHashTable *tid_info_ht, GHashTable *tid_prv_ht, GList **tid_prv_l, GHashTable *irq_name_ht, uint32_t *nsoftirqs, GHashTable *irq_prv_ht, GList **irq_prv_l)
 {
 	gint tid, pid, ppid;
 	char name[16];
@@ -348,6 +350,7 @@ void getThreadInfo(struct bt_context *ctx, GHashTable *tid_info_ht, GHashTable *
 			if(g_hash_table_insert(irq_name_ht, GINT_TO_POINTER(tid), g_strdup(irqname)))
 			{
 				g_hash_table_insert(irq_prv_ht, GINT_TO_POINTER(tid), GINT_TO_POINTER(irqprv));
+				*irq_prv_l = g_list_append(*irq_prv_l, GINT_TO_POINTER(tid));
 				irqprv++;
 			}
 		}
@@ -400,12 +403,11 @@ void printPRVHeader(struct bt_context *ctx, FILE *fp, GHashTable *tid_info_ht, i
 	fprintf(fp, "\n");
 }
 
-void printROW(FILE *fp, GHashTable *tid_info_ht, GList *tid_prv_l, GHashTable *irq_name_ht, uint32_t nsoftirqs)
+void printROW(FILE *fp, GHashTable *tid_info_ht, GList *tid_prv_l, GHashTable *irq_name_ht, GList *irq_prv_l, uint32_t nsoftirqs)
 {
 	uint32_t NCPUS = 16;
-	gpointer key, value;
+	gpointer value;
 	int rcount = 0;
-	GHashTableIter iterirq;
 
 	fprintf(fp, "LEVEL CPU SIZE %d\n", NCPUS + nsoftirqs + g_hash_table_size(irq_name_ht));
 	while (rcount < NCPUS)
@@ -421,10 +423,11 @@ void printROW(FILE *fp, GHashTable *tid_info_ht, GList *tid_prv_l, GHashTable *i
 		rcount++;
 	}
 
-	g_hash_table_iter_init(&iterirq, irq_name_ht);
-	while (g_hash_table_iter_next(&iterirq, &key, &value))
+	while (irq_prv_l != NULL)
 	{
-		fprintf(fp, "IRQ %d %s\n", GPOINTER_TO_INT(key), (char *)value);
+		value = g_hash_table_lookup(irq_name_ht, irq_prv_l->data);
+		fprintf(fp, "IRQ %d %s\n", GPOINTER_TO_INT(irq_prv_l->data), (const char *)value);
+		irq_prv_l = irq_prv_l->next;	
 	}
 	fprintf(fp, "\n\n");
 
@@ -458,7 +461,7 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp, GHashTable *tid_info_ht, GH
 	char *event_name;
 	uint32_t systemTID, prvTID, swapper;
 
-	uint32_t handler_entry = 0;
+	uint32_t handler = 0;
 	uint32_t handler_exit = 0;
 
 	for (i = 0; i<16; i++)
@@ -644,41 +647,36 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp, GHashTable *tid_info_ht, GH
 			event_value = 0;
 			state = 2;
 //			fprintf(fp, "1:%u:%" PRIu64 ":%u:%u:%" PRIu64 ":%" PRIu64 ":%" PRIu64 "\n", cpu_id + 1, appl_id, 1, 1, init_time, end_time, state);
-		}else	if (strcmp(event_name, "irq_handler_entry") == 0)
+		} else if (strstr(event_name, "irq_handler_") != NULL)
 		{
+			if (strcmp(event_name, "irq_handler_exit") == 0)
+			{
+				event_value = 0;
+				handler_exit++;
+			}
 			scope = bt_ctf_get_top_level_scope(event, BT_EVENT_FIELDS);
 			irq_id = bt_get_signed_int(bt_ctf_get_field(event, scope, "_irq"));
-			cpu_id = NCPUS + nsoftirqs + GPOINTER_TO_INT(g_hash_table_lookup(irq_prv_ht, GINT_TO_POINTER(irq_id)));
+			cpu_id = NCPUS + nsoftirqs + GPOINTER_TO_INT(g_hash_table_lookup(irq_prv_ht, GINT_TO_POINTER(irq_id))) - 1;
 			appl_id = 1;
 			task_id = 1;
 			thread_id = 1;
-			handler_entry++;
-		}else	if (strcmp(event_name, "irq_handler_exit") == 0)
+			handler++;
+			if (verbose)
+			{
+				printf("%s\tIRQ: %d, PRVCPU: %d\ttime: %lu\n", event_name, irq_id, cpu_id + 1, event_time);
+			}
+		}else if (strstr(event_name, "softirq_") != NULL)
 		{
-			event_value = 0;
-			scope = bt_ctf_get_top_level_scope(event, BT_EVENT_FIELDS);
-			irq_id = bt_get_signed_int(bt_ctf_get_field(event, scope, "_irq"));
-			cpu_id = NCPUS + nsoftirqs + GPOINTER_TO_INT(g_hash_table_lookup(irq_prv_ht, GINT_TO_POINTER(irq_id)));
 			appl_id = 1;
-			task_id = 1;
-			thread_id = 1;
-			handler_exit++;
-		}else if (strcmp(event_name, "softirq_raise") == 0)
-		{
-			appl_id = 0;
-		}else	if (strcmp(event_name, "softirq_entry") == 0)
-		{
-			scope = bt_ctf_get_top_level_scope(event, BT_EVENT_FIELDS);
-			cpu_id = NCPUS - 1 + bt_get_unsigned_int(bt_ctf_get_field(event, scope, "_vec"));
-			appl_id = 1;
-			task_id = 1;
-			thread_id = 1;
-		}else	if (strcmp(event_name, "softirq_exit") == 0)
-		{
-			event_value = 0;
+			if (strcmp(event_name, "softirq_raise") == 0)
+			{
+				appl_id = 0;
+			}else if (strcmp(event_name, "softirq_exit") == 0)
+			{
+				event_value = 0;
+			}
 			scope = bt_ctf_get_top_level_scope(event, BT_EVENT_FIELDS);
 			cpu_id = NCPUS - 1 + bt_get_unsigned_int(bt_ctf_get_field(event, scope, "_vec"));
-			appl_id = 1;
 			task_id = 1;
 			thread_id = 1;
 		}
@@ -713,7 +711,10 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp, GHashTable *tid_info_ht, GH
 end_iter:
 	bt_ctf_iter_destroy(iter);
 
-	printf("handler_entry = %d, handler_exit = %d\n", handler_entry, handler_exit);
+	if (verbose)
+	{
+		printf("handler_entry = %d, handler_exit = %d\n", handler - handler_exit, handler_exit);
+	}
 }
 
 // Removes substring torm from input string dest
@@ -943,6 +944,7 @@ int main(int argc, char **argv)
 	GList *tid_prv_l = NULL;
 	GHashTable *irq_name_ht = g_hash_table_new(g_direct_hash, g_direct_equal);
 	GHashTable *irq_prv_ht = g_hash_table_new(g_direct_hash, g_direct_equal);
+	GList *irq_prv_l = NULL;
 
 	if (!opt_output)
 	{
@@ -1003,11 +1005,11 @@ int main(int argc, char **argv)
 //	iter_trace(ctx, prv, app_pid_ht, pid_app_ht, tid_pid_ht, conv_ht);
 //	list_events(ctx, pcf);
 
-	getThreadInfo(ctx, tid_info_ht, tid_prv_ht, &tid_prv_l, irq_name_ht, &nsoftirqs, irq_prv_ht);
+	getThreadInfo(ctx, tid_info_ht, tid_prv_ht, &tid_prv_l, irq_name_ht, &nsoftirqs, irq_prv_ht, &irq_prv_l);
 	nresources = 16 + nsoftirqs + g_hash_table_size(irq_name_ht);
 	printPRVHeader(ctx, prv, tid_info_ht, nresources);
 	printPCFHeader(pcf);
-	printROW(row, tid_info_ht, tid_prv_l, irq_name_ht, nsoftirqs);
+	printROW(row, tid_info_ht, tid_prv_l, irq_name_ht, irq_prv_l, nsoftirqs);
 
 	/* This two, have to be in this order, if not we remove the string
 	 * syscall_entry_ before traversing the trace and the events don't
@@ -1024,6 +1026,7 @@ end:
 	g_list_free(tid_prv_l);
 	g_hash_table_destroy(irq_name_ht);
 	g_hash_table_destroy(irq_prv_ht);
+	g_list_free(irq_prv_l);
 
 	fflush(prv);
 	fflush(pcf);
