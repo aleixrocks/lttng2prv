@@ -1,6 +1,5 @@
-Add appl_id to IRQs
-Get #CPUs and threads from metadata and not have to traverse all events.
---Event parameters.
+More event parameters
+Paraver can't visualize negative values
 
 Jesus comments
 //* Solo aparecen 16 threads y en la traza original habia muchisimos, no? En el formato de paraver se puede poner el identificador de aplicacion, proceso y thread en cada record ademas de un campo de CPU. Tendrias que intentar mapear los records usando estos conceptos.
