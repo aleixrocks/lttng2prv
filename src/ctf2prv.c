@@ -1,62 +1,9 @@
-#define _GNU_SOURCE
-#define __USE_XOPEN_EXTENDED
-#define _XOPEN_SOURCE 500
-#include <stdio.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <stdlib.h>
-#include <popt.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <glib.h>
-#include <string.h>
-#include <ftw.h>
-#include <fts.h>
-#include <inttypes.h>
-#include <errno.h>
-#include <babeltrace/babeltrace.h>
-#include <babeltrace/context.h>
-#include <babeltrace/ctf/events.h>
-#include <babeltrace/ctf/callbacks.h>
-#include <babeltrace/ctf/iterator.h>
-
-#include <babeltrace/format.h>
-
-enum
-{
-	OPT_NONE = 0,
-	OPT_OUTPUT,
-	OPT_VERBOSE,
-	OPT_HELP
-};
+#include "ctf2prv.h"
 
 static char *opt_output;
-const char *inputTrace; //, *outputTrace;
+const char *inputTrace;
 
-static struct bt_format *fmt_read;
-
-static struct poptOption long_options[] =
-{
-	{"output", 'o', POPT_ARG_STRING, NULL, OPT_OUTPUT, NULL, NULL },
-	{"verbose", 'v', POPT_ARG_NONE, NULL, OPT_VERBOSE, NULL, NULL },
-	{"help", 'h', POPT_ARG_NONE, NULL, OPT_HELP, NULL, NULL}
-};
-
-struct traceTimes
-{
-	uint64_t first_stream_timestamp;
-	uint64_t last_stream_timestamp;
-};
-
-struct traceTimes trace_times;
 uint64_t offset;
-
-struct Events
-{
-	uint64_t id;
-	char *name;
-	struct Events *next;
-};
 
 short int verbose = 0;
 
@@ -65,8 +12,8 @@ static void print_usage(FILE *fp)
 	fprintf(fp, "CTF2PRV trace converter \n\n");
 	fprintf(fp, "Usage: ctf2prv [OPTIONS] FILE\n");
 	fprintf(fp, "\tFILE                   Input trace file\n");
-//	fprintf(fp, "\t-o, --output OUTPUT    Output file name\n");
-	fprintf(fp, "\t-v, --verbose          Increase output\n");
+	fprintf(fp, "\t-o, --output OUTPUT    Output file name\n");
+//	fprintf(fp, "\t-v, --verbose          Increase output\n");
 	fprintf(fp, "\t-h, --help             Show this help\n");
 	fprintf(fp, "\n");
 }
@@ -256,11 +203,9 @@ error:
 void getThreadInfo(struct bt_context *ctx, uint32_t *ncpus, GHashTable *tid_info_ht, GHashTable *tid_prv_ht, GList **tid_prv_l, GHashTable *irq_name_ht, uint32_t *nsoftirqs, GHashTable *irq_prv_ht, GList **irq_prv_l)
 {
 	uint32_t ncpus_cmp = 0;
-	gint tid; //, pid, ppid;
+	gint tid;
 	char name[16];
 	char *irqname;
-
-//	uint64_t init_time_old, end_time_old;
 
 	struct bt_iter_pos begin_pos;
 	struct bt_ctf_iter *iter;
@@ -311,8 +256,6 @@ void getThreadInfo(struct bt_context *ctx, uint32_t *ncpus, GHashTable *tid_info
 		{
 			scope = bt_ctf_get_top_level_scope(event, BT_EVENT_FIELDS);
 			tid = bt_get_signed_int(bt_ctf_get_field(event, scope, "_tid"));
-//			pid = bt_get_signed_int(bt_ctf_get_field(event, scope, "_pid"));
-//			ppid = bt_get_signed_int(bt_ctf_get_field(event, scope, "_ppid"));
 
 			strcpy(name, bt_ctf_get_char_array(bt_ctf_get_field(event, scope, "_name")));
 
@@ -455,8 +398,6 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp, GHashTable *tid_info_ht, GH
 	uint64_t appl_id, task_id, thread_id, init_time, end_time, state, event_time;
 	uint32_t cpu_id, irq_id;
 	uint64_t event_type, event_value, offset_stream;
-//	uint64_t cpu_thread[ncpus];
-//	unsigned int i = 0;
 	char *event_name;
 	uint32_t systemTID, prvTID, swapper;
 
@@ -467,10 +408,7 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp, GHashTable *tid_info_ht, GH
 	uint64_t uintval = 0;
 	char fields[100];
 
-//	for (i = 0; i<16; i++)
-//	{
-//		cpu_thread[i] = 0;
-//	}
+	short int print = 0;
 
 	begin_pos.type = BT_SEEK_BEGIN;
 	iter = bt_ctf_iter_create(bt_ctx, &begin_pos, NULL);
@@ -481,39 +419,25 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp, GHashTable *tid_info_ht, GH
 	init_time = 0;
 	end_time = 0;
 	appl_id = 0;
+	task_id = 1;
+	thread_id = 1;
+
 	swapper = GPOINTER_TO_INT(g_hash_table_lookup(tid_prv_ht, GINT_TO_POINTER(0)));
 
 	while ((event = bt_ctf_iter_read_event_flags(iter, &flags)) != NULL)
 	{
+		print = 1;
 		scope = bt_ctf_get_top_level_scope(event, BT_STREAM_PACKET_CONTEXT);
 		cpu_id = bt_get_unsigned_int(bt_ctf_get_field(event, scope, "cpu_id"));
-		task_id = 1;
 
 		event_name = (char *) malloc(sizeof(char *) * strlen(bt_ctf_event_name(event) + 1));
 		strcpy(event_name, bt_ctf_event_name(event));
-
-		if (strstr(event_name, "sched_switch") != NULL)
-		{
-			scope = bt_ctf_get_top_level_scope(event, BT_EVENT_FIELDS);
-			systemTID = bt_get_signed_int(bt_ctf_get_field(event, scope, "_next_tid"));
-			prvTID = GPOINTER_TO_INT(g_hash_table_lookup(tid_prv_ht, GINT_TO_POINTER(systemTID)));
-
-			if (systemTID == 0)
-			{
-				prvTID = swapper;
-			}
-			appl_id = prvTID;
-		}
 
 /**************************** State Records ***************************/
 
 		if (strstr(event_name, "sched_switch") != NULL)
 		{
 			offset_stream = trace_times.first_stream_timestamp;
-//			scope = bt_ctf_get_top_level_scope(event, BT_STREAM_PACKET_CONTEXT);
-//			init_time = bt_ctf_get_uint64(bt_ctf_get_field(event, scope, "timestamp_begin"));
-//			end_time = bt_ctf_get_uint64(bt_ctf_get_field(event, scope, "timestamp_end")) - init_time;
-//			init_time = init_time - offset_stream;
 			state = 3;
 			end_time = bt_ctf_get_timestamp(event) - offset - offset_stream;
 
@@ -526,8 +450,6 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp, GHashTable *tid_info_ht, GH
 			}
 			appl_id = prvTID;
 
-//			fprintf(fp, "1:%u:%" PRIu64 ":%u:%u:%" PRIu64 ":%" PRIu64 ":%" PRIu64 "\n", cpu_id + 1, appl_id, 1, 1, init_time, end_time, state);
-
 			state = 2;
 			scope = bt_ctf_get_top_level_scope(event, BT_EVENT_FIELDS);
 			systemTID = bt_get_signed_int(bt_ctf_get_field(event, scope, "_next_tid"));
@@ -538,17 +460,12 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp, GHashTable *tid_info_ht, GH
 			}
 			appl_id = prvTID;
 
-//			fprintf(fp, "1:%u:%" PRIu64 ":%u:%u:%" PRIu64 ":%" PRIu64 ":%" PRIu64 "\n", cpu_id + 1, appl_id, 1, 1, init_time, end_time, state);
 			init_time = end_time;
 		}
 
 		if (strstr(event_name, "sched_wakeup") != NULL)
 		{
 			offset_stream = trace_times.first_stream_timestamp;
-//			scope = bt_ctf_get_top_level_scope(event, BT_STREAM_PACKET_CONTEXT);
-//			init_time = bt_ctf_get_uint64(bt_ctf_get_field(event, scope, "timestamp_begin"));
-//			end_time = bt_ctf_get_uint64(bt_ctf_get_field(event, scope, "timestamp_end")) - init_time;
-//			init_time = init_time - offset_stream;
 			state = 3;
 			end_time = bt_ctf_get_timestamp(event) - offset - offset_stream;
 
@@ -561,39 +478,28 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp, GHashTable *tid_info_ht, GH
 			}
 			appl_id = prvTID;
 
-//			fprintf(fp, "1:%u:%" PRIu64 ":%u:%u:%" PRIu64 ":%" PRIu64 ":%" PRIu64 "\n", cpu_id + 1, appl_id, 1, 1, init_time, end_time, state);
 			init_time = end_time;
 		}
 
 		if (strcmp(event_name, "syscall_entry") == 0)
 		{
 			offset_stream = trace_times.first_stream_timestamp;
-//			scope = bt_ctf_get_top_level_scope(event, BT_STREAM_PACKET_CONTEXT);
-//			init_time = bt_ctf_get_uint64(bt_ctf_get_field(event, scope, "timestamp_begin"));
-//			end_time = bt_ctf_get_uint64(bt_ctf_get_field(event, scope, "timestamp_end")) - init_time;
-//			init_time = init_time - offset_stream;
-//			state = 4;
 			end_time = bt_ctf_get_timestamp(event) - offset - offset_stream;
+			state = 4; // SYSCALL
 
 			appl_id = prvTID;
 
-//			fprintf(fp, "1:%u:%" PRIu64 ":%u:%u:%" PRIu64 ":%" PRIu64 ":%" PRIu64 "\n", cpu_id + 1, appl_id, 1, 1, init_time, end_time, state);
 			init_time = end_time;
 		}
 
 		if (strcmp(event_name, "syscall_exit") == 0)
 		{
 			offset_stream = trace_times.first_stream_timestamp;
-//			scope = bt_ctf_get_top_level_scope(event, BT_STREAM_PACKET_CONTEXT);
-//			init_time = bt_ctf_get_uint64(bt_ctf_get_field(event, scope, "timestamp_begin"));
-//			end_time = bt_ctf_get_uint64(bt_ctf_get_field(event, scope, "timestamp_end")) - init_time;
-//			init_time = init_time - offset_stream;
 			state = 2;
 			end_time = bt_ctf_get_timestamp(event) - offset - offset_stream;
 
 			appl_id = prvTID;
 
-//			fprintf(fp, "1:%u:%" PRIu64 ":%u:%u:%" PRIu64 ":%" PRIu64 ":%" PRIu64 "\n", cpu_id + 1, appl_id, 1, 1, init_time, end_time, state);
 			init_time = end_time;
 		}
 
@@ -602,13 +508,12 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp, GHashTable *tid_info_ht, GH
 /**************************** Event Records ***************************/
 
 		offset_stream = trace_times.first_stream_timestamp;
+
 		scope = bt_ctf_get_top_level_scope(event, BT_STREAM_PACKET_CONTEXT);
 		init_time = bt_ctf_get_uint64(bt_ctf_get_field(event, scope, "timestamp_begin"));
 		end_time = bt_ctf_get_uint64(bt_ctf_get_field(event, scope, "timestamp_end")) - init_time;
 		init_time = init_time - offset_stream;
 
-		offset_stream = trace_times.first_stream_timestamp;
-		scope = bt_ctf_get_top_level_scope(event, BT_STREAM_PACKET_CONTEXT);
 		event_time = bt_ctf_get_timestamp(event) - offset - offset_stream;
 
 		scope = bt_ctf_get_top_level_scope(event, BT_STREAM_EVENT_HEADER);
@@ -626,8 +531,6 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp, GHashTable *tid_info_ht, GH
 		{
 			event_type = 12000000;
 			appl_id = 1;
-			task_id = 1;
-			thread_id = 1;
 			if (strcmp(event_name, "irq_handler_exit") == 0)
 			{
 				event_value = 0;
@@ -641,11 +544,9 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp, GHashTable *tid_info_ht, GH
 		{
 			event_type = 11000000;
 			appl_id = 1;
-			task_id = 1;
-			thread_id = 1;
 			if (strcmp(event_name, "softirq_raise") == 0)
 			{
-				task_id = 0;
+				print = 0;
 			}else if (strcmp(event_name, "softirq_exit") == 0)
 			{
 				event_value = 0;
@@ -705,7 +606,7 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp, GHashTable *tid_info_ht, GH
 			sprintf(fields + strlen(fields), ":20000004:%lu", uintval);
 		}
 
-		if (task_id != 0)
+		if (print != 0)
 		{
 			fprintf(fp, "2:%u:%lu:%lu:%lu:%lu:%lu:%lu%s\n", cpu_id + 1, appl_id, task_id, thread_id, event_time, event_type, event_value, fields);
 		}
@@ -915,8 +816,7 @@ void printPCFHeader(FILE *fp)
 			"3\t\tWAIT_BLOCKED\n"
 			"4\t\tSYSCALL\n"
 			"5\t\tSOFTIRQ\n"
-			"6\t\tSOFTIRQ_RAISED\n"
-			"7\t\tSOFTIRQ_ACTIVE\n\n\n");
+			"6\t\tSOFTIRQ_ACTIVE\n\n\n");
 
 	fprintf(fp,
 			"STATES_COLOR\n"
