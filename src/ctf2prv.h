@@ -22,31 +22,44 @@
 #include <babeltrace/format.h>
 
 static void print_usage(FILE *fp);
+
 static int parse_options(int argc, char **argv);
+
 static int traverse_trace_dir(const char *fpath, const struct stat *sb, 
 		int tflag, struct FTW *ftwbuf);
-int bt_context_add_traces_recursive(struct bt_context *ctx,
-		const char *path, const char *format_str,
-		void (*packet_seek)(struct bt_stream_pos *pos, size_t offset,
-		int whence));
+
+int bt_context_add_traces_recursive(struct bt_context *ctx, const char *path, 
+		const char *format_str, void (*packet_seek)(struct bt_stream_pos *pos,
+	 	size_t offset, int whence));
+
 enum bt_cb_ret handle_exit_syscall(struct bt_ctf_event *call_data,
 		void *private_data);
+
 void getThreadInfo(struct bt_context *ctx, uint32_t *ncpus,
 		GHashTable *tid_info_ht, GHashTable *tid_prv_ht, GList **tid_prv_l,
 	 	GHashTable *irq_name_ht, uint32_t *nsoftirqs,
-	 	GHashTable *irq_prv_ht, GList **irq_prv_l);
-void printPRVHeader(struct bt_context *ctx, FILE *fp,
-	 	GHashTable *tid_info_ht, int nresources);
+		GHashTable *irq_prv_ht, GList **irq_prv_l);
+
+void printPRVHeader(struct bt_context *ctx, FILE *fp, GHashTable *tid_info_ht,
+	 	int nresources);
+
 void printROW(FILE *fp, GHashTable *tid_info_ht, GList *tid_prv_l,
 	 	GHashTable *irq_name_ht, GList *irq_prv_l, const uint32_t ncpus,
 	 	const uint32_t nsoftirqs);
-void iter_trace(struct bt_context *bt_ctx, FILE *fp,
-	 	GHashTable *tid_info_ht, GHashTable *tid_prv_ht,
-	 	GHashTable *irq_name_ht, GHashTable *irq_prv_ht,
+
+void iter_trace(struct bt_context *bt_ctx, FILE *fp, GHashTable *tid_info_ht,
+		GHashTable *tid_prv_ht, GHashTable *irq_name_ht, GHashTable *irq_prv_ht,
 	 	const uint32_t ncpus, const uint32_t nsoftirqs);
+
 void rmsubstr(char *dest, char *torm);
+
 void list_events(struct bt_context *bt_ctx, FILE *fp);
+
 void printPCFHeader(FILE *fp);
+
+uint64_t bt_get_unsigned_int(const struct bt_definition *field);
+
+int64_t bt_get_signed_int(const struct bt_definition *field);
 
 enum
 {
@@ -79,3 +92,4 @@ struct Events
 	char *name;
 	struct Events *next;
 };
+

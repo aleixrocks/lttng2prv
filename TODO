@@ -17,3 +17,4 @@ Jesus comments
 // * Tendrias que poner tambien alguno de los argumentos (fd, size, return value ...)
 
 // * En las visualizaciones con tracecompass se ve unas lineas que corresponde a interrupciones hard y soft. Habria que ver como mapeamos estos records a Paraver 
+

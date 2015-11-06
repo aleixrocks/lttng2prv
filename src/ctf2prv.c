@@ -588,22 +588,52 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp, GHashTable *tid_info_ht, GH
 			}
 		}
 
-		uintval = bt_ctf_get_uint64(bt_ctf_get_field(event, scope, "_size"));
-		if (!bt_ctf_field_get_error())
+		if (bt_ctf_get_int_signedness(bt_ctf_get_decl_from_def(bt_ctf_get_field(event, scope, "_size"))))
 		{
-			sprintf(fields + strlen(fields), ":20000002:%lu", uintval);
+			intval = bt_ctf_get_int64(bt_ctf_get_field(event, scope, "_size"));
+			if (!bt_ctf_field_get_error())
+			{
+				sprintf(fields + strlen(fields), ":20000002:%li", intval);
+			}
+		}else
+		{
+			uintval = bt_ctf_get_uint64(bt_ctf_get_field(event, scope, "_size"));
+			if (!bt_ctf_field_get_error())
+			{
+				sprintf(fields + strlen(fields), ":20000002:%lu", uintval);
+			}
 		}
 
-		uintval = bt_ctf_get_uint64(bt_ctf_get_field(event, scope, "_cmd"));
-		if (!bt_ctf_field_get_error())
+		if (bt_ctf_get_int_signedness(bt_ctf_get_decl_from_def(bt_ctf_get_field(event, scope, "_cmd"))))
 		{
-			sprintf(fields + strlen(fields), ":20000003:%lu", uintval);
+			intval = bt_ctf_get_int64(bt_ctf_get_field(event, scope, "_cmd"));
+			if (!bt_ctf_field_get_error())
+			{
+				sprintf(fields + strlen(fields), ":20000003:%li", intval);
+			}
+		}else
+		{
+			uintval = bt_ctf_get_uint64(bt_ctf_get_field(event, scope, "_cmd"));
+			if (!bt_ctf_field_get_error())
+			{
+				sprintf(fields + strlen(fields), ":20000003:%lu", uintval);
+			}
 		}
 
-		uintval = bt_ctf_get_uint64(bt_ctf_get_field(event, scope, "_arg"));
-		if (!bt_ctf_field_get_error())
+		if (bt_ctf_get_int_signedness(bt_ctf_get_decl_from_def(bt_ctf_get_field(event, scope, "_cmd"))))
 		{
-			sprintf(fields + strlen(fields), ":20000004:%lu", uintval);
+			intval = bt_ctf_get_int64(bt_ctf_get_field(event, scope, "_arg"));
+			if (!bt_ctf_field_get_error())
+			{
+				sprintf(fields + strlen(fields), ":20000004:%li", intval);
+			}
+		}else
+		{
+			uintval = bt_ctf_get_uint64(bt_ctf_get_field(event, scope, "_arg"));
+			if (!bt_ctf_field_get_error())
+			{
+				sprintf(fields + strlen(fields), ":20000004:%lu", uintval);
+			}
 		}
 
 		if (print != 0)
@@ -937,3 +967,4 @@ end:
 
 	return 0;
 }
+
