@@ -387,7 +387,7 @@ void printROW(FILE *fp, GHashTable *tid_info_ht, GList *tid_prv_l, GHashTable *i
 }
 
 // Iterates through all events of the trace
-void iter_trace(struct bt_context *bt_ctx, FILE *fp, GHashTable *tid_info_ht, GHashTable *tid_prv_ht, GHashTable *irq_name_ht, GHashTable *irq_prv_ht, const uint32_t ncpus, const uint32_t nsoftirqs)
+void iter_trace(struct bt_context *bt_ctx, FILE *fp, GHashTable *tid_info_ht, GHashTable *tid_prv_ht, GHashTable *irq_name_ht, GHashTable *irq_prv_ht, const uint32_t ncpus, const uint32_t nsoftirqs, GHashTable *arg_types_ht)
 {
 	struct bt_ctf_iter *iter;
 	struct bt_iter_pos begin_pos;
@@ -404,9 +404,7 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp, GHashTable *tid_info_ht, GH
 	uint32_t handler = 0;
 	uint32_t handler_exit = 0;
 
-	int64_t intval = 0;
-	uint64_t uintval = 0;
-	char fields[100];
+	char fields[256];
 
 	short int print = 0;
 
@@ -564,77 +562,8 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp, GHashTable *tid_info_ht, GH
 			event_value = bt_ctf_get_uint64(bt_ctf_get_struct_field_index(bt_ctf_get_field(event, scope, "v"), 0));
 		}
 
-		// System Call Arguments
-		scope = bt_ctf_get_top_level_scope(event, BT_EVENT_FIELDS);
-		intval = bt_ctf_get_int64(bt_ctf_get_field(event, scope, "_ret"));
-		if (!bt_ctf_field_get_error())
-		{
-			sprintf(fields + strlen(fields), ":20000000:%li", intval);
-		}
-
-		if (bt_ctf_get_int_signedness(bt_ctf_get_decl_from_def(bt_ctf_get_field(event, scope, "_fd"))))
-		{
-			intval = bt_ctf_get_int64(bt_ctf_get_field(event, scope, "_fd"));
-			if (!bt_ctf_field_get_error())
-			{
-				sprintf(fields + strlen(fields), ":20000001:%li", intval);
-			}
-		}else
-		{
-			uintval = bt_ctf_get_uint64(bt_ctf_get_field(event, scope, "_fd"));
-			if (!bt_ctf_field_get_error())
-			{
-				sprintf(fields + strlen(fields), ":20000001:%lu", uintval);
-			}
-		}
-
-		if (bt_ctf_get_int_signedness(bt_ctf_get_decl_from_def(bt_ctf_get_field(event, scope, "_size"))))
-		{
-			intval = bt_ctf_get_int64(bt_ctf_get_field(event, scope, "_size"));
-			if (!bt_ctf_field_get_error())
-			{
-				sprintf(fields + strlen(fields), ":20000002:%li", intval);
-			}
-		}else
-		{
-			uintval = bt_ctf_get_uint64(bt_ctf_get_field(event, scope, "_size"));
-			if (!bt_ctf_field_get_error())
-			{
-				sprintf(fields + strlen(fields), ":20000002:%lu", uintval);
-			}
-		}
-
-		if (bt_ctf_get_int_signedness(bt_ctf_get_decl_from_def(bt_ctf_get_field(event, scope, "_cmd"))))
-		{
-			intval = bt_ctf_get_int64(bt_ctf_get_field(event, scope, "_cmd"));
-			if (!bt_ctf_field_get_error())
-			{
-				sprintf(fields + strlen(fields), ":20000003:%li", intval);
-			}
-		}else
-		{
-			uintval = bt_ctf_get_uint64(bt_ctf_get_field(event, scope, "_cmd"));
-			if (!bt_ctf_field_get_error())
-			{
-				sprintf(fields + strlen(fields), ":20000003:%lu", uintval);
-			}
-		}
-
-		if (bt_ctf_get_int_signedness(bt_ctf_get_decl_from_def(bt_ctf_get_field(event, scope, "_cmd"))))
-		{
-			intval = bt_ctf_get_int64(bt_ctf_get_field(event, scope, "_arg"));
-			if (!bt_ctf_field_get_error())
-			{
-				sprintf(fields + strlen(fields), ":20000004:%li", intval);
-			}
-		}else
-		{
-			uintval = bt_ctf_get_uint64(bt_ctf_get_field(event, scope, "_arg"));
-			if (!bt_ctf_field_get_error())
-			{
-				sprintf(fields + strlen(fields), ":20000004:%lu", uintval);
-			}
-		}
+		// Get Call Arguments
+		getArgValue(event, arg_types_ht, &fields[0]);
 
 		if (print != 0)
 		{
@@ -892,6 +821,7 @@ int main(int argc, char **argv)
 	GHashTable *irq_name_ht = g_hash_table_new(g_direct_hash, g_direct_equal);
 	GHashTable *irq_prv_ht = g_hash_table_new(g_direct_hash, g_direct_equal);
 	GList *irq_prv_l = NULL;
+	GHashTable *arg_types_ht = g_hash_table_new(g_str_hash, g_str_equal);
 
 	ret = parse_options(argc, argv);
 	if (ret < 0)
@@ -941,11 +871,13 @@ int main(int argc, char **argv)
 	printPCFHeader(pcf);
 	printROW(row, tid_info_ht, tid_prv_l, irq_name_ht, irq_prv_l, ncpus, nsoftirqs);
 
+	fillArgTypes(arg_types_ht);
+
 	/* This two, have to be in this order, if not we remove the string
 	 * syscall_entry_ before traversing the trace and the events don't
 	 * get listed properly.
 	 */
-	iter_trace(ctx, prv, tid_info_ht, tid_prv_ht, irq_name_ht, irq_prv_ht, ncpus, nsoftirqs);
+	iter_trace(ctx, prv, tid_info_ht, tid_prv_ht, irq_name_ht, irq_prv_ht, ncpus, nsoftirqs, arg_types_ht);
 	list_events(ctx, pcf);
 
 end:
@@ -957,6 +889,7 @@ end:
 	g_hash_table_destroy(irq_name_ht);
 	g_hash_table_destroy(irq_prv_ht);
 	g_list_free(irq_prv_l);
+	g_hash_table_destroy(arg_types_ht);
 
 	fflush(prv);
 	fflush(pcf);

@@ -49,7 +49,7 @@ void printROW(FILE *fp, GHashTable *tid_info_ht, GList *tid_prv_l,
 
 void iter_trace(struct bt_context *bt_ctx, FILE *fp, GHashTable *tid_info_ht,
 		GHashTable *tid_prv_ht, GHashTable *irq_name_ht, GHashTable *irq_prv_ht,
-	 	const uint32_t ncpus, const uint32_t nsoftirqs);
+	 	const uint32_t ncpus, const uint32_t nsoftirqs, GHashTable *arg_types_ht);
 
 void rmsubstr(char *dest, char *torm);
 
@@ -92,4 +92,7 @@ struct Events
 	char *name;
 	struct Events *next;
 };
+
+void getArgValue(struct bt_ctf_event *event, GHashTable *arg_types_ht, char *fields);
+void fillArgTypes(GHashTable *arg_types_ht);
 
