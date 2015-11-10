@@ -384,7 +384,6 @@ void printROW(FILE *fp, GHashTable *tid_info_ht, GList *tid_prv_l, GHashTable *i
 		fprintf(fp, "%s\n", (const char *)value);
 		tid_prv_l = tid_prv_l->next;
 	}
-	fprintf(fp, "\n");
 }
 
 // Iterates through all events of the trace
@@ -597,8 +596,6 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp, GHashTable *tid_info_ht, GH
 			goto end_iter;
 	}
 
-	fprintf(fp, "\n");
-
 end_iter:
 	bt_ctf_iter_destroy(iter);
 
@@ -758,8 +755,6 @@ void list_events(struct bt_context *bt_ctx, FILE *fp)
 	fprintf(fp,	"0\t20000003\tcmd\n");
 	fprintf(fp,	"0\t20000004\targ\n");
 	fprintf(fp,	"0\t20000005\tcount\n");
-
-	fprintf(fp, "\n");
 
 	free(syscalls_root);
 	free(syscalls);

@@ -1,20 +1,3 @@
 Change fields string array to a dynamic string
 Paraver can't visualize negative values
 
-Jesus comments
-//* Solo aparecen 16 threads y en la traza original habia muchisimos, no? En el formato de paraver se puede poner el identificador de aplicacion, proceso y thread en cada record ademas de un campo de CPU. Tendrias que intentar mapear los records usando estos conceptos.
-
-//* Son realmente llamadas a sistema los valores bajos del evento? (ejemplo workqueue_queue_work) En realidad syscall son solo los que la etiqueta empieza por syscal, no? Habria que usar un tipo distinto para system calls y para otros eventos internos del kernel
-
-// * Parece que pones un valor para entrada a system call y otro para salida. El de salida debe ser el valor cero independiente de la system call que sea. A la etiqueta de entrada le tienes que quitar el texto 'syscall_entry_'.
-
-// * No se si para los eventos internos de kernel hay entrada y salida. En caso afirmativo lo mismo. el tipo de evento Paraver deberia agrupar todos los eventos relativos a un tema (e.g. memoria), el valor identificar el evento concreto y al salir un record paraver con el mismo tipo y valor cero. Si los eventos son puntuales (no hay el de entrada y el de salida) entonces solo un record paraver en el momento que sucede.
-
-// * Los eventos sched_algo tienen informacion de cambios de contexto. Es lo que tienes que usar para determinar en que CPU esta cada thread.
-
-// * Puedes generar mas cfgs? Duracion del las llamadas a sistema, Histograma de duracion, ....
-
-// * Tendrias que poner tambien alguno de los argumentos (fd, size, return value ...)
-
-// * En las visualizaciones con tracecompass se ve unas lineas que corresponde a interrupciones hard y soft. Habria que ver como mapeamos estos records a Paraver 
-
