@@ -384,6 +384,7 @@ void printROW(FILE *fp, GHashTable *tid_info_ht, GList *tid_prv_l, GHashTable *i
 		fprintf(fp, "%s\n", (const char *)value);
 		tid_prv_l = tid_prv_l->next;
 	}
+	fprintf(fp, "\n");
 }
 
 // Iterates through all events of the trace
@@ -400,9 +401,6 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp, GHashTable *tid_info_ht, GH
 	uint64_t event_type, event_value, offset_stream;
 	char *event_name;
 	uint32_t systemTID, prvTID, swapper;
-
-	uint32_t handler = 0;
-	uint32_t handler_exit = 0;
 
 	char fields[256];
 
@@ -532,12 +530,10 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp, GHashTable *tid_info_ht, GH
 			if (strcmp(event_name, "irq_handler_exit") == 0)
 			{
 				event_value = 0;
-				handler_exit++;
 			}
 			scope = bt_ctf_get_top_level_scope(event, BT_EVENT_FIELDS);
 			irq_id = bt_get_signed_int(bt_ctf_get_field(event, scope, "_irq"));
 			cpu_id = ncpus + nsoftirqs + GPOINTER_TO_INT(g_hash_table_lookup(irq_prv_ht, GINT_TO_POINTER(irq_id))) - 1;
-			handler++;
 		}else if (strstr(event_name, "softirq_") != NULL)
 		{
 			event_type = 11000000;
@@ -554,6 +550,21 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp, GHashTable *tid_info_ht, GH
 		}else
 		{
 			event_type = 19000000;
+			if ((strcmp(event_name, "sched_process_exit") == 0) ||
+					(strcmp(event_name, "hrtimer_expire_exit") == 0) ||
+					(strcmp(event_name, "timer_expire_exit") == 0) ||
+					(strcmp(event_name, "kvm_userspace_exit") == 0) ||
+					(strcmp(event_name, "kvm_exit") == 0) ||
+					(strcmp(event_name, "ext4_ind_map_blocks_exit") == 0) ||
+					(strcmp(event_name, "ext4_ext_map_blocks_exit") == 0) ||
+					(strcmp(event_name, "ext4_truncate_exit") == 0) ||
+					(strcmp(event_name, "ext4_unlink_exit") == 0) ||
+					(strcmp(event_name, "ext4_fallocate_exit") == 0) ||
+					(strcmp(event_name, "ext4_direct_IO_exit") == 0) ||
+					(strcmp(event_name, "ext4_sync_file_exit") == 0))
+			{
+				event_value = 0;
+			}
 		}
 		
 /*****		 ID for value == 65536 in extended metadata		*****/
@@ -563,13 +574,13 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp, GHashTable *tid_info_ht, GH
 		}
 
 		// Get Call Arguments
+		fields[0] = '\0';
 		getArgValue(event, arg_types_ht, &fields[0]);
 
 		if (print != 0)
 		{
 			fprintf(fp, "2:%u:%lu:%lu:%lu:%lu:%lu:%lu%s\n", cpu_id + 1, appl_id, task_id, thread_id, event_time, event_type, event_value, fields);
 		}
-		fields[0] = '\0';
 		free(event_name);
 
 
@@ -585,6 +596,8 @@ void iter_trace(struct bt_context *bt_ctx, FILE *fp, GHashTable *tid_info_ht, GH
 		if (ret < 0)
 			goto end_iter;
 	}
+
+	fprintf(fp, "\n");
 
 end_iter:
 	bt_ctf_iter_destroy(iter);
@@ -739,11 +752,14 @@ void list_events(struct bt_context *bt_ctx, FILE *fp)
 	fprintf(fp, "\n\n\n");
 
 	fprintf(fp, "EVENT_TYPE\n");
-	fprintf(fp,	"0\t20000000\treturn\n");
+	fprintf(fp,	"0\t20000000\tret\n");
 	fprintf(fp, "0\t20000001\tfd\n");
 	fprintf(fp, "0\t20000002\tsize\n");
 	fprintf(fp,	"0\t20000003\tcmd\n");
 	fprintf(fp,	"0\t20000004\targ\n");
+	fprintf(fp,	"0\t20000005\tcount\n");
+
+	fprintf(fp, "\n");
 
 	free(syscalls_root);
 	free(syscalls);
