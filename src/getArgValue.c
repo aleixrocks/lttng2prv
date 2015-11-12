@@ -23,6 +23,8 @@
 #include <babeltrace/ctf/iterator.h>
 #include <babeltrace/format.h>
 
+#include "types.h"
+
 void fillArgTypes(GHashTable *arg_types_ht)
 {
 	g_hash_table_insert(arg_types_ht, g_strdup("ret"), GINT_TO_POINTER(20000000));
@@ -31,6 +33,7 @@ void fillArgTypes(GHashTable *arg_types_ht)
 	g_hash_table_insert(arg_types_ht, g_strdup("cmd"), GINT_TO_POINTER(20000003));
 	g_hash_table_insert(arg_types_ht, g_strdup("arg"), GINT_TO_POINTER(20000004));
 	g_hash_table_insert(arg_types_ht, g_strdup("count"), GINT_TO_POINTER(20000005));
+	g_hash_table_insert(arg_types_ht, g_strdup("buf"), GINT_TO_POINTER(20000006));
 
 }
 
@@ -76,4 +79,3 @@ void getArgValue(struct bt_ctf_event *event, GHashTable *arg_types_ht, char *fie
 		}
 	}
 }
-

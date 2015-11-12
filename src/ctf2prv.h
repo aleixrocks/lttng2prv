@@ -61,38 +61,11 @@ uint64_t bt_get_unsigned_int(const struct bt_definition *field);
 
 int64_t bt_get_signed_int(const struct bt_definition *field);
 
-enum
-{
-	OPT_NONE = 0,
-	OPT_OUTPUT,
-	OPT_VERBOSE,
-	OPT_HELP
-};
-
-static struct bt_format *fmt_read;
-
 static struct poptOption long_options[] =
 {
 	{"output", 'o', POPT_ARG_STRING, NULL, OPT_OUTPUT, NULL, NULL },
-	{"verbose", 'v', POPT_ARG_NONE, NULL, OPT_VERBOSE, NULL, NULL },
 	{"help", 'h', POPT_ARG_NONE, NULL, OPT_HELP, NULL, NULL}
-};
-
-struct traceTimes
-{
-	uint64_t first_stream_timestamp;
-	uint64_t last_stream_timestamp;
-};
-
-struct traceTimes trace_times;
-
-struct Events
-{
-	uint64_t id;
-	char *name;
-	struct Events *next;
 };
 
 void getArgValue(struct bt_ctf_event *event, GHashTable *arg_types_ht, char *fields);
 void fillArgTypes(GHashTable *arg_types_ht);
-
