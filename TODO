@@ -1,6 +1,2 @@
 - Change fields string array to a dynamic string
 - Paraver can't visualize negative values
-- Make offset variable not global. Used by getThreadInfo, printPRVHeader and
-iter_trace
-- Move printPRVHeader to printHeaders.c file
-- Move getThreadInfo to new .c file

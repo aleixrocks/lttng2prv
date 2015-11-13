@@ -25,6 +25,44 @@ void rmsubstr(char *dest, char *torm)
 	}
 }
 
+void printPRVHeader(struct bt_context *ctx, uint64_t *offset, FILE *fp, GHashTable *tid_info_ht, int nresources)
+{
+	*offset -= trace_times.first_stream_timestamp;
+
+	time_t now = time(0);
+	struct tm *local = localtime(&now);
+	uint64_t ftime = trace_times.last_stream_timestamp - trace_times.first_stream_timestamp;
+
+	char day[3], mon[3], hour[3], min[3];
+	sprintf(day, "%.2d", local->tm_mday);
+	sprintf(mon, "%.2d", local->tm_mon + 1);
+	sprintf(hour, "%.2d", local->tm_hour);
+	sprintf(min, "%.2d", local->tm_min);
+
+	fprintf(fp, "#Paraver (%s/%s/%d at %s:%s):%" PRIu64 "_ns:1(%d):%d:",
+			day,
+			mon,
+			local->tm_year + 1900,
+			hour,
+			min,
+			ftime,
+			nresources,
+			g_hash_table_size(tid_info_ht) // nAppl
+	);
+
+	GHashTableIter ht_iter;
+	gpointer key, value;
+	g_hash_table_iter_init(&ht_iter, tid_info_ht);
+
+	while (g_hash_table_iter_next(&ht_iter, &key, &value))
+	{
+		fprintf(fp, "1(1:1),");
+	}
+	// Remove last colon
+	fseek(fp, -1, SEEK_CUR);
+	fprintf(fp, "\n");
+}
+
 void printROW(FILE *fp, GHashTable *tid_info_ht, GList *tid_prv_l, GHashTable *irq_name_ht, GList *irq_prv_l, const uint32_t ncpus, const uint32_t nsoftirqs)
 {
 	gpointer value;
@@ -113,7 +151,7 @@ void printPCFHeader(FILE *fp)
 			"23\t\t{0,41,0}\n\n\n");
 }
 
-// Prints list of event types
+// Classifies and prints events found in the ctf tracefile
 void list_events(struct bt_context *bt_ctx, FILE *fp)
 {
 	unsigned int cnt, i;
@@ -150,7 +188,7 @@ void list_events(struct bt_context *bt_ctx, FILE *fp)
 	for (i = 0; i < cnt; i++)
 	{
 		event_id = bt_ctf_get_decl_event_id(list[i]);
-		event_name = bt_ctf_get_decl_event_name(list[i]);
+		event_name = strdup(bt_ctf_get_decl_event_name(list[i]));
 
  		if (strstr(event_name, "syscall_entry") != NULL) {
  			syscalls->id = event_id;
