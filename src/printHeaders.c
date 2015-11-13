@@ -188,7 +188,7 @@ void list_events(struct bt_context *bt_ctx, FILE *fp)
 	for (i = 0; i < cnt; i++)
 	{
 		event_id = bt_ctf_get_decl_event_id(list[i]);
-		event_name = strdup(bt_ctf_get_decl_event_name(list[i]));
+		event_name = strndup(bt_ctf_get_decl_event_name(list[i]), strlen(bt_ctf_get_decl_event_name(list[i])));
 
  		if (strstr(event_name, "syscall_entry") != NULL) {
  			syscalls->id = event_id;

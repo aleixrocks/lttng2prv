@@ -1,2 +1,5 @@
+- Change ctf2prv to lttng2prv
+- Use autotools to build
+	- http://abhinavsingh.com/getting-started-with-autotools-gnu-build-system-on-debian/
 - Change fields string array to a dynamic string
 - Paraver can't visualize negative values
