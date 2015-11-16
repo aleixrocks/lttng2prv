@@ -1,5 +1,5 @@
 #include "types.h"
-#include "ctf2prv.h"
+#include "lttng2prv.h"
 
 static char *opt_output;
 const char *inputTrace;
@@ -102,8 +102,8 @@ end:
 
 static void print_usage(FILE *fp)
 {
-	fprintf(fp, "CTF2PRV trace converter \n\n");
-	fprintf(fp, "Usage: ctf2prv [OPTIONS] FILE\n");
+	fprintf(fp, "LTTNG2PRV trace converter \n\n");
+	fprintf(fp, "Usage: lttng2prv [OPTIONS] FILE\n");
 	fprintf(fp, "\tFILE                   Input trace file\n");
 	fprintf(fp, "\t-o, --output OUTPUT    Output file name\n");
 	fprintf(fp, "\t-h, --help             Show this help\n");
