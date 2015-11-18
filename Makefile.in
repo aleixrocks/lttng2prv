@@ -1,7 +1,16 @@
-package = lttng2prv
-version = 0.9
-tarname = $(package)
+# @configure_input@
+
+package = @PACKAGE_NAME@
+version = @PACKAGE_VERSION@
+tarname = @PACKAGE_TARNAME@
 distdir = $(tarname)-$(version)
+
+prefix = @prefix@
+exec_prefix = @exec_prefix@
+bindir = @bindir@
+
+srcdir = @srcdir@
+VPATH = @srcdir@
 
 all clean lttng2prv:
 	$(MAKE) -C src $@
@@ -14,18 +23,30 @@ $(distdir).tar.gz: FORCE $(distdir)
 
 $(distdir):
 	mkdir -p $(distdir)/src
-	cp Makefile $(distdir)
+	cp configure.ac $(distdir)
+	cp Makefile.in $(distdir)
 	cp README $(distdir)
 	cp LICENSE $(distdir)
-	cp src/Makefile $(distdir)/src
+	cp src/Makefile.in $(distdir)/src
 	cp src/*.c $(distdir)/src
 	cp src/*.h $(distdir)/src
 
 distcheck: $(distdir).tar.gz
 	gzip -cd $+ | tar xvf -
+	cd $(distdir); ./configure
 	$(MAKE) -C $(distdir) all clean
+	$(MAKE) -C $(distdir) \
+		DESTDIR=$${PWD}/$(distdir)/_inst \
+		install uninstall
+	$(MAKE) -C $(distdir) clean
 	rm -rf $(distdir)
 	@echo "*** Package $(distdir).tar.gz ready for distribution."
+
+Makefile: Makefile.in config.status
+	./config.status $@
+
+config.status: configure
+	./config.status --recheck
 
 FORCE:
 	-rm $(distdir).tar.gz &> /dev/null
