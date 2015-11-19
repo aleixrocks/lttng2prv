@@ -42,8 +42,10 @@ To compile ctf2prv you will need:
 Compilation
 -----------
 
-To build lttng2prv run `make` from the project's root folder.
-
+	CFLAGS="-I${BABELTRACE_HOME}/include"
+	LDFLAGS="-L${BABELTRACE_HOME}/lib/.libs -L${BABELTRACE_HOME}/formats/ctf/.libs"
+	./configure
+	make
 
 Usage
 -----
