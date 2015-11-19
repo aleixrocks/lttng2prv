@@ -1,7 +1,3 @@
-- Use autotools to build
-	- https://autotools.io/index.html
-	- http://www.freesoftwaremagazine.com/books/autotools_a_guide_to_autoconf_automake_libtool
-	- http://abhinavsingh.com/getting-started-with-autotools-gnu-build-system-on-debian/
 - Change fields string array to a dynamic string
 - Paraver can't visualize negative values
 	- New type?

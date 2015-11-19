@@ -3,6 +3,7 @@
 
 AC_PREREQ([2.69])
 AC_INIT([lttng2prv], [0.9], [lau.mercadal@bsc.es])
+AM_INIT_AUTOMAKE([dist-bzip2])
 AC_CONFIG_SRCDIR([src/getArgValue.c])
 AC_CONFIG_HEADERS([config.h])
 
