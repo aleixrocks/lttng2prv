@@ -116,7 +116,7 @@ void getThreadInfo(struct bt_context *ctx, uint64_t *offset, uint32_t *ncpus, GH
 		{
 			scope = bt_ctf_get_top_level_scope(event, BT_EVENT_FIELDS);
 			tid = bt_get_signed_int(bt_ctf_get_field(event, scope, "_irq"));
-			irqname = (char *) malloc(sizeof(char *) * strlen(bt_ctf_get_string(bt_ctf_get_field(event, scope, "_name"))));
+			irqname = (char *) malloc(sizeof(char *) * (strlen(bt_ctf_get_string(bt_ctf_get_field(event, scope, "_name"))) + 1 ));
 			strcpy(irqname, bt_ctf_get_string(bt_ctf_get_field(event, scope, "_name")));
 			if(g_hash_table_insert(irq_name_ht, GINT_TO_POINTER(tid), g_strdup(irqname)))
 			{

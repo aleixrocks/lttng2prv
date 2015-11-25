@@ -36,7 +36,7 @@ int main(int argc, char **argv)
 
 	if (!opt_output)
 	{
-		opt_output = (char *)calloc(strlen("trace"), sizeof(char *));
+		opt_output = (char *)calloc(strlen("trace") + 1, sizeof(char *));
 		strcpy(opt_output, "trace");
 	}
 	strcat(opt_output, ".prv");

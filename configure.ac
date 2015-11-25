@@ -21,7 +21,7 @@ AC_SEARCH_LIBS([bt_context_create], [babeltrace], [],
 AC_SEARCH_LIBS([bt_ctf_get_field], [babeltrace-ctf], [],
 							 [AC_MSG_ERROR([Cannot find babeltrace-ctf.])])
 
-PKG_CHECK_MODULES([glib2], [glib-2.0], [],
+PKG_CHECK_MODULES([glib2], [glib-2.0 >= 2.40], [],
 									[AC_MSG_ERROR([Cannot find glib-2.0.])])
 
 # Checks for header files.
