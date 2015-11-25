@@ -12,6 +12,7 @@ int main(int argc, char **argv)
 	uint32_t nsoftirqs = 0;
 	uint32_t ncpus = 0;
 	uint64_t offset;
+	char *ofilename;
 
 	FILE *prv, *pcf, *row;
 
@@ -39,14 +40,19 @@ int main(int argc, char **argv)
 		opt_output = (char *)calloc(strlen("trace") + 1, sizeof(char *));
 		strcpy(opt_output, "trace");
 	}
-	strcat(opt_output, ".prv");
-	prv = fopen(opt_output, "w");
-	opt_output[strlen(opt_output) - 4] = 0;
-	strcat(opt_output, ".pcf");
-	pcf = fopen(opt_output, "w");
-	opt_output[strlen(opt_output) - 4] = 0;
-	strcat(opt_output, ".row");
-	row = fopen(opt_output, "w");
+	ofilename = (char *)calloc(strlen(opt_output) + 5, sizeof(char *));
+	strncpy(ofilename, opt_output, strlen(opt_output) + 1);
+
+	strcat(ofilename, ".prv");
+	prv = fopen(ofilename, "w");
+
+	ofilename[strlen(opt_output)] = 0;
+	strcat(ofilename, ".pcf");
+	pcf = fopen(ofilename, "w");
+
+	ofilename[strlen(opt_output)] = 0;
+	strcat(ofilename, ".row");
+	row = fopen(ofilename, "w");
 
 	ctx = bt_context_create();
 	if (!ctx)
@@ -89,6 +95,8 @@ end:
 	g_hash_table_destroy(irq_prv_ht);
 	g_list_free(irq_prv_l);
 	g_hash_table_destroy(arg_types_ht);
+
+	free(ofilename);
 
 	fflush(prv);
 	fflush(pcf);
