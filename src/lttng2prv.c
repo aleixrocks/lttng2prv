@@ -434,6 +434,9 @@ void iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp, GHashTabl
 			}
 			scope = bt_ctf_get_top_level_scope(event, BT_EVENT_FIELDS);
 			cpu_id = ncpus - 1 + bt_get_unsigned_int(bt_ctf_get_field(event, scope, "_vec"));
+		}else if ((strstr(event_name, "netif_") != NULL) || (strstr(event_name, "net_dev_") != NULL))
+		{
+			event_type = 13000000;
 		}else
 		{
 			event_type = 19000000;

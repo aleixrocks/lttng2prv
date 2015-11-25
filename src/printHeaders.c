@@ -167,6 +167,8 @@ void list_events(struct bt_context *bt_ctx, FILE *fp)
 	struct Events *softirqs;
 	struct Events *irqhandler_root;
 	struct Events *irqhandler;
+	struct Events *netcalls_root;
+	struct Events *netcalls;
 
 	syscalls_root = (struct Events *) malloc(sizeof(struct Events));
 	syscalls_root->next = NULL;
@@ -183,6 +185,10 @@ void list_events(struct bt_context *bt_ctx, FILE *fp)
 	irqhandler_root = (struct Events *) malloc(sizeof(struct Events));
 	irqhandler_root->next = NULL;
 	irqhandler = irqhandler_root;
+
+	netcalls_root = (struct Events *) malloc(sizeof(struct Events));
+	netcalls_root->next = NULL;
+	netcalls = netcalls_root;
 
 	bt_ctf_get_event_decl_list(0, bt_ctx, &list, &cnt);
 	for (i = 0; i < cnt; i++)
@@ -220,6 +226,14 @@ void list_events(struct bt_context *bt_ctx, FILE *fp)
  			irqhandler->next = (struct Events*) malloc(sizeof(struct Events));
  			irqhandler = irqhandler->next;
  			irqhandler->next = NULL;
+		} else if ((strstr(event_name, "netif_") != NULL) || (strstr(event_name, "net_dev_") != NULL))
+		{
+			netcalls->id = event_id;
+			netcalls->name = (char *) malloc(strlen(event_name) + 1);
+			strncpy(netcalls->name, event_name, strlen(event_name) + 1);
+			netcalls->next = (struct Events*) malloc(sizeof(struct Events));
+			netcalls = netcalls->next;
+			netcalls->next = NULL;
 		} else if ((strstr(event_name, "syscall_exit") == NULL) && (strstr(event_name, "softirq_exit") == NULL) && (strstr(event_name, "irq_handler_exit") == NULL))
  		{
  			kerncalls->id = event_id;
@@ -268,6 +282,18 @@ void list_events(struct bt_context *bt_ctx, FILE *fp)
 	fprintf(fp, "0\texit\n\n\n");
 
 	fprintf(fp, "EVENT_TYPE\n"
+			"0\t13000000\tNETWORK CALLS\n"
+			"VALUES\n");
+
+	netcalls = netcalls_root;
+	while(netcalls->next != NULL)
+	{
+		fprintf(fp, "%" PRIu64 "\t%s\n", netcalls->id, netcalls->name);
+		netcalls = netcalls->next;
+	}
+	fprintf(fp, "\n\n");
+
+	fprintf(fp, "EVENT_TYPE\n"
 			"0\t19000000\tOthers\n"
 			"VALUES\n");
 
@@ -287,6 +313,10 @@ void list_events(struct bt_context *bt_ctx, FILE *fp)
 	fprintf(fp,	"0\t20000004\targ\n");
 	fprintf(fp,	"0\t20000005\tcount\n");
 	fprintf(fp, "0\t20000006\tbuf\n");
+	fprintf(fp, "0\t20000007\tskbaddr\n");
+	fprintf(fp, "0\t20000008\tlen\n");
+	fprintf(fp, "0\t20000009\tname\n");
+	fprintf(fp, "0\t20000010\trc\n");
 
 	free(syscalls_root);
 	free(syscalls);

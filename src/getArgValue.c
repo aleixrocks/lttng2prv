@@ -34,6 +34,10 @@ void fillArgTypes(GHashTable *arg_types_ht)
 	g_hash_table_insert(arg_types_ht, g_strndup("arg", 3), GINT_TO_POINTER(20000004));
 	g_hash_table_insert(arg_types_ht, g_strndup("count", 5), GINT_TO_POINTER(20000005));
 	g_hash_table_insert(arg_types_ht, g_strndup("buf", 3), GINT_TO_POINTER(20000006));
+	g_hash_table_insert(arg_types_ht, g_strndup("skbaddr", 7), GINT_TO_POINTER(20000007));
+	g_hash_table_insert(arg_types_ht, g_strndup("len", 3), GINT_TO_POINTER(20000008));
+	g_hash_table_insert(arg_types_ht, g_strndup("name", 4), GINT_TO_POINTER(20000009));
+	g_hash_table_insert(arg_types_ht, g_strndup("rc", 2), GINT_TO_POINTER(20000010));
 
 }
 
