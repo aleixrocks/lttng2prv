@@ -324,14 +324,14 @@ void iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp, GHashTabl
 //			state = 3;
 			end_time = bt_ctf_get_timestamp(event) - *offset - offset_stream;
 
-			scope = bt_ctf_get_top_level_scope(event, BT_EVENT_FIELDS);
-			systemTID = bt_get_signed_int(bt_ctf_get_field(event, scope, "_prev_tid"));
-			prvTID = GPOINTER_TO_INT(g_hash_table_lookup(tid_prv_ht, GINT_TO_POINTER(systemTID)));
-			if (systemTID == 0)
-			{
-				prvTID = swapper;
-			}
-			appl_id = prvTID;
+//			scope = bt_ctf_get_top_level_scope(event, BT_EVENT_FIELDS);
+//			systemTID = bt_get_signed_int(bt_ctf_get_field(event, scope, "_prev_tid"));
+//			prvTID = GPOINTER_TO_INT(g_hash_table_lookup(tid_prv_ht, GINT_TO_POINTER(systemTID)));
+//			if (systemTID == 0)
+//			{
+//				prvTID = swapper;
+//			}
+//			appl_id = prvTID;
 
 //			state = 2;
 			scope = bt_ctf_get_top_level_scope(event, BT_EVENT_FIELDS);
@@ -370,7 +370,7 @@ void iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp, GHashTabl
 			end_time = bt_ctf_get_timestamp(event) - *offset - offset_stream;
 //			state = 4; // SYSCALL
 
-			appl_id = prvTID;
+			//appl_id = prvTID;
 
 			init_time = end_time;
 		}
@@ -381,7 +381,7 @@ void iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp, GHashTabl
 //			state = 2;
 			end_time = bt_ctf_get_timestamp(event) - *offset - offset_stream;
 
-			appl_id = prvTID;
+			//appl_id = prvTID;
 
 			init_time = end_time;
 		}
@@ -413,7 +413,7 @@ void iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp, GHashTabl
 		} else if (strstr(event_name, "irq_handler_") != NULL)
 		{
 			event_type = 12000000;
-			appl_id = 1;
+			//appl_id = 1;
 			if (strcmp(event_name, "irq_handler_exit") == 0)
 			{
 				event_value = 0;
@@ -424,7 +424,7 @@ void iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp, GHashTabl
 		}else if (strstr(event_name, "softirq_") != NULL)
 		{
 			event_type = 11000000;
-			appl_id = 1;
+			//appl_id = 1;
 			if (strcmp(event_name, "softirq_raise") == 0)
 			{
 				print = 0;
