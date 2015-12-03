@@ -283,7 +283,10 @@ void iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp, GHashTabl
 	const struct bt_definition *scope;
 	int ret = 0;
 	int flags;
-	uint64_t appl_id, task_id, thread_id, init_time, end_time, event_time; //,state;
+	unsigned int nresources = ncpus + nsoftirqs + g_hash_table_size(irq_name_ht);
+	// independent appl_id for each resource (CPU or IRQ)
+	uint64_t appl_id[nresources];
+	uint64_t task_id, thread_id, init_time, end_time, event_time; //,state;
 	uint32_t cpu_id, irq_id;
 	uint64_t event_type, event_value, offset_stream;
 	char *event_name;
@@ -301,9 +304,13 @@ void iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp, GHashTabl
 
 	init_time = 0;
 	end_time = 0;
-	appl_id = 0;
 	task_id = 1;
 	thread_id = 1;
+
+	for (int i = 0; i < nresources; i++)
+	{
+		appl_id[i] = 0;
+	}
 
 	swapper = GPOINTER_TO_INT(g_hash_table_lookup(tid_prv_ht, GINT_TO_POINTER(0)));
 
@@ -341,28 +348,28 @@ void iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp, GHashTabl
 			{
 				prvTID = swapper;
 			}
-			appl_id = prvTID;
+			appl_id[cpu_id] = prvTID;
 
 			init_time = end_time;
 		}
 
-		if (strstr(event_name, "sched_wakeup") != NULL)
-		{
-			offset_stream = trace_times.first_stream_timestamp;
-//			state = 3;
-			end_time = bt_ctf_get_timestamp(event) - *offset - offset_stream;
-
-			scope = bt_ctf_get_top_level_scope(event, BT_EVENT_FIELDS);
-			systemTID = bt_get_signed_int(bt_ctf_get_field(event, scope, "_tid"));
-			prvTID = GPOINTER_TO_INT(g_hash_table_lookup(tid_prv_ht, GINT_TO_POINTER(systemTID)));
-			if (systemTID == 0)
-			{
-				prvTID = swapper;
-			}
-			appl_id = prvTID;
-
-			init_time = end_time;
-		}
+// 		if (strstr(event_name, "sched_wakeup") != NULL)
+// 		{
+// 			offset_stream = trace_times.first_stream_timestamp;
+// //			state = 3;
+// 			end_time = bt_ctf_get_timestamp(event) - *offset - offset_stream;
+// 
+// 			scope = bt_ctf_get_top_level_scope(event, BT_EVENT_FIELDS);
+// 			systemTID = bt_get_signed_int(bt_ctf_get_field(event, scope, "_tid"));
+// 			prvTID = GPOINTER_TO_INT(g_hash_table_lookup(tid_prv_ht, GINT_TO_POINTER(systemTID)));
+// 			if (systemTID == 0)
+// 			{
+// 				prvTID = swapper;
+// 			}
+// 			appl_id = prvTID;
+// 
+// 			init_time = end_time;
+// 		}
 
 		if (strcmp(event_name, "syscall_entry") == 0)
 		{
@@ -420,7 +427,12 @@ void iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp, GHashTabl
 			}
 			scope = bt_ctf_get_top_level_scope(event, BT_EVENT_FIELDS);
 			irq_id = bt_get_signed_int(bt_ctf_get_field(event, scope, "_irq"));
-			cpu_id = ncpus + nsoftirqs + GPOINTER_TO_INT(g_hash_table_lookup(irq_prv_ht, GINT_TO_POINTER(irq_id))) - 1;
+			irq_id = ncpus + nsoftirqs + GPOINTER_TO_INT(g_hash_table_lookup(irq_prv_ht, GINT_TO_POINTER(irq_id))) - 1;
+			// assign the same thread_id of the calling process to the irq position
+			appl_id[irq_id] = appl_id[cpu_id];
+			// we need cpu_id to be the identifier of the irq to properly print the
+			// prv line
+			cpu_id = irq_id;
 		}else if (strstr(event_name, "softirq_") != NULL)
 		{
 			event_type = 11000000;
@@ -433,7 +445,12 @@ void iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp, GHashTabl
 				event_value = 0;
 			}
 			scope = bt_ctf_get_top_level_scope(event, BT_EVENT_FIELDS);
-			cpu_id = ncpus - 1 + bt_get_unsigned_int(bt_ctf_get_field(event, scope, "_vec"));
+			irq_id = ncpus - 1 + bt_get_unsigned_int(bt_ctf_get_field(event, scope, "_vec"));
+			// assign the same thread_id of the calling process to the irq position
+			appl_id[irq_id] = appl_id[cpu_id];
+			// we need cpu_id to be the identifier of the irq to properly print the
+			// prv line
+			cpu_id = irq_id;
 		}else if ((strstr(event_name, "netif_") != NULL) || (strstr(event_name, "net_dev_") != NULL))
 		{
 			event_type = 13000000;
@@ -467,9 +484,10 @@ void iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp, GHashTabl
 		fields[0] = '\0';
 		getArgValue(event, arg_types_ht, &fields[0]);
 
-		if (print != 0)
+		// print only if we know the appl_id of the event
+		if ((print != 0) && (appl_id[cpu_id] != 0))
 		{
-			fprintf(fp, "2:%u:%lu:%lu:%lu:%lu:%lu:%lu%s\n", cpu_id + 1, appl_id, task_id, thread_id, event_time, event_type, event_value, fields);
+			fprintf(fp, "2:%u:%lu:%lu:%lu:%lu:%lu:%lu%s\n", cpu_id + 1, appl_id[cpu_id], task_id, thread_id, event_time, event_type, event_value, fields);
 		}
 		free(event_name);
 
