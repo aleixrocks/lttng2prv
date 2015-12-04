@@ -27,21 +27,21 @@
 
 void fillArgTypes(GHashTable *arg_types_ht)
 {
-	g_hash_table_insert(arg_types_ht, g_strndup("ret", 3), GINT_TO_POINTER(20000000));
-	g_hash_table_insert(arg_types_ht, g_strndup("fd", 2), GINT_TO_POINTER(20000001));
-	g_hash_table_insert(arg_types_ht, g_strndup("size", 4), GINT_TO_POINTER(20000002));
-	g_hash_table_insert(arg_types_ht, g_strndup("cmd", 3), GINT_TO_POINTER(20000003));
-	g_hash_table_insert(arg_types_ht, g_strndup("arg", 3), GINT_TO_POINTER(20000004));
-	g_hash_table_insert(arg_types_ht, g_strndup("count", 5), GINT_TO_POINTER(20000005));
-	g_hash_table_insert(arg_types_ht, g_strndup("buf", 3), GINT_TO_POINTER(20000006));
-	g_hash_table_insert(arg_types_ht, g_strndup("skbaddr", 7), GINT_TO_POINTER(20000007));
-	g_hash_table_insert(arg_types_ht, g_strndup("len", 3), GINT_TO_POINTER(20000008));
-	g_hash_table_insert(arg_types_ht, g_strndup("name", 4), GINT_TO_POINTER(20000009));
-	g_hash_table_insert(arg_types_ht, g_strndup("rc", 2), GINT_TO_POINTER(20000010));
+	g_hash_table_insert(arg_types_ht, g_strndup("ret", 3), GINT_TO_POINTER(1));
+	g_hash_table_insert(arg_types_ht, g_strndup("fd", 2), GINT_TO_POINTER(2));
+	g_hash_table_insert(arg_types_ht, g_strndup("size", 4), GINT_TO_POINTER(3));
+	g_hash_table_insert(arg_types_ht, g_strndup("cmd", 3), GINT_TO_POINTER(4));
+	g_hash_table_insert(arg_types_ht, g_strndup("arg", 3), GINT_TO_POINTER(5));
+	g_hash_table_insert(arg_types_ht, g_strndup("count", 5), GINT_TO_POINTER(6));
+	g_hash_table_insert(arg_types_ht, g_strndup("buf", 3), GINT_TO_POINTER(7));
+	g_hash_table_insert(arg_types_ht, g_strndup("skbaddr", 7), GINT_TO_POINTER(8));
+	g_hash_table_insert(arg_types_ht, g_strndup("len", 3), GINT_TO_POINTER(9));
+	g_hash_table_insert(arg_types_ht, g_strndup("name", 4), GINT_TO_POINTER(10));
+	g_hash_table_insert(arg_types_ht, g_strndup("rc", 2), GINT_TO_POINTER(11));
 
 }
 
-void getArgValue(struct bt_ctf_event *event, GHashTable *arg_types_ht, char *fields)
+void getArgValue(struct bt_ctf_event *event, uint64_t event_type, GHashTable *arg_types_ht, char *fields)
 {
 	const struct bt_definition *scope;
 	struct bt_definition **fieldList;
@@ -69,14 +69,14 @@ void getArgValue(struct bt_ctf_event *event, GHashTable *arg_types_ht, char *fie
 					intval = bt_ctf_get_int64(fieldList[iter]);
 					if (!bt_ctf_field_get_error())
 					{
-						sprintf(fields + strlen(fields), ":%d:%li", GPOINTER_TO_INT(type), intval);
+						sprintf(fields + strlen(fields), ":%lu:%li", event_type + GPOINTER_TO_INT(type), intval);
 					}
 				}else
 				{
 					uintval = bt_ctf_get_uint64(fieldList[iter]);
 					if (!bt_ctf_field_get_error())
 					{
-						sprintf(fields + strlen(fields), ":%d:%lu", GPOINTER_TO_INT(type), uintval);
+						sprintf(fields + strlen(fields), ":%lu:%lu", event_type + GPOINTER_TO_INT(type), uintval);
 					}
 				}
 			}

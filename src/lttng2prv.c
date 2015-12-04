@@ -482,7 +482,7 @@ void iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp, GHashTabl
 
 		// Get Call Arguments
 		fields[0] = '\0';
-		getArgValue(event, arg_types_ht, &fields[0]);
+		getArgValue(event, event_type, arg_types_ht, &fields[0]);
 
 		// print only if we know the appl_id of the event
 		if ((print != 0) && (appl_id[cpu_id] != 0))

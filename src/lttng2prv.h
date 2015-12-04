@@ -68,6 +68,6 @@ uint64_t bt_get_unsigned_int(const struct bt_definition *field);
 
 int64_t bt_get_signed_int(const struct bt_definition *field);
 
-void getArgValue(struct bt_ctf_event *event, GHashTable *arg_types_ht, char *fields);
+void getArgValue(struct bt_ctf_event *event, uint64_t event_type, GHashTable *arg_types_ht, char *fields);
 
 void fillArgTypes(GHashTable *arg_types_ht);

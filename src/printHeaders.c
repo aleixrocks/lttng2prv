@@ -306,17 +306,25 @@ void list_events(struct bt_context *bt_ctx, FILE *fp)
 	fprintf(fp, "\n\n\n");
 
 	fprintf(fp, "EVENT_TYPE\n");
-	fprintf(fp,	"0\t20000000\tret\n");
-	fprintf(fp, "0\t20000001\tfd\n");
-	fprintf(fp, "0\t20000002\tsize\n");
-	fprintf(fp,	"0\t20000003\tcmd\n");
-	fprintf(fp,	"0\t20000004\targ\n");
-	fprintf(fp,	"0\t20000005\tcount\n");
-	fprintf(fp, "0\t20000006\tbuf\n");
-	fprintf(fp, "0\t20000007\tskbaddr\n");
-	fprintf(fp, "0\t20000008\tlen\n");
-	fprintf(fp, "0\t20000009\tname\n");
-	fprintf(fp, "0\t20000010\trc\n");
+	fprintf(fp,	"0\t10000001\tSYSCALL_RET\n");
+	fprintf(fp,	"0\t12000001\tIRQ_RET\n");
+	fprintf(fp,	"0\t19000001\tOTHERS_RET\n");
+	fprintf(fp, "0\t10000002\tSYSCALL_FD\n");
+	fprintf(fp, "0\t10000003\tSYSCALL_SIZE\n");
+	fprintf(fp, "0\t19000003\tOTHERS_SIZE\n");
+	fprintf(fp,	"0\t10000004\tSYSCALL_CMD\n");
+	fprintf(fp,	"0\t10000005\tSYSCALL_ARG\n");
+	fprintf(fp,	"0\t10000006\tSYSCALL_COUNT\n");
+	fprintf(fp,	"0\t19000006\tOTHERS_COUNT\n");
+	fprintf(fp, "0\t10000007\tSYSCALL_BUF\n");
+	fprintf(fp, "0\t13000008\tNET_SKBADDR\n");
+	fprintf(fp, "0\t19000008\tOTHERS_SKBADDR\n");
+	fprintf(fp, "0\t10000009\tSYSCALL_LEN\n");
+	fprintf(fp, "0\t13000009\tNET_LEN\n");
+	fprintf(fp, "0\t19000009\tOTHERS_LEN\n");
+	fprintf(fp, "0\t10000010\tSYSCALL_NAME\n");
+	fprintf(fp, "0\t13000010\tNET_NAME\n");
+	fprintf(fp, "0\t13000011\tNET_RC\n");
 
 	free(syscalls_root);
 	free(syscalls);
