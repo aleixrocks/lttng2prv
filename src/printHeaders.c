@@ -325,6 +325,9 @@ void list_events(struct bt_context *bt_ctx, FILE *fp)
 	fprintf(fp, "0\t10000010\tSYSCALL_NAME\n");
 	fprintf(fp, "0\t13000010\tNET_NAME\n");
 	fprintf(fp, "0\t13000011\tNET_RC\n");
+	fprintf(fp, "0\t10000012\tSYSCALL_UFDS\n");
+	fprintf(fp, "0\t10000013\tSYSCALL_NFDS\n");
+	fprintf(fp, "0\t10000014\tSYSCALL_TIMEOUT_MSECS\n");
 
 	free(syscalls_root);
 	free(syscalls);

@@ -38,7 +38,9 @@ void fillArgTypes(GHashTable *arg_types_ht)
 	g_hash_table_insert(arg_types_ht, g_strndup("len", 3), GINT_TO_POINTER(9));
 	g_hash_table_insert(arg_types_ht, g_strndup("name", 4), GINT_TO_POINTER(10));
 	g_hash_table_insert(arg_types_ht, g_strndup("rc", 2), GINT_TO_POINTER(11));
-
+	g_hash_table_insert(arg_types_ht, g_strndup("ufds", 4), GINT_TO_POINTER(12));
+	g_hash_table_insert(arg_types_ht, g_strndup("nfds", 4), GINT_TO_POINTER(13));
+	g_hash_table_insert(arg_types_ht, g_strndup("timeout_msecs", 13), GINT_TO_POINTER(14));
 }
 
 void getArgValue(struct bt_ctf_event *event, uint64_t event_type, GHashTable *arg_types_ht, char *fields)
