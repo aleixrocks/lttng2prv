@@ -4,6 +4,7 @@ enum
 {
 	OPT_NONE = 0,
 	OPT_OUTPUT,
+	OPT_TIMESTAMPS,
 	OPT_HELP
 };
 

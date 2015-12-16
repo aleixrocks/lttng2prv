@@ -3,6 +3,7 @@
 
 static char *opt_output;
 const char *inputTrace;
+static bool print_timestamps = false;
 
 int main(int argc, char **argv)
 {
@@ -27,8 +28,7 @@ int main(int argc, char **argv)
 	ret = parse_options(argc, argv);
 	if (ret < 0)
 	{
-		fprintf(stderr, "Error parsing options.\n\n");
-		print_usage(stderr);
+		fprintf(stderr, "Error parsing options.\n");
 		exit(EXIT_FAILURE);
 	}else if (ret > 0)
 	{
@@ -37,8 +37,10 @@ int main(int argc, char **argv)
 
 	if (!opt_output)
 	{
-		opt_output = (char *)calloc(strlen("trace") + 1, sizeof(char *));
-		strcpy(opt_output, "trace");
+		char *it = calloc(strlen(inputTrace) + 1, sizeof(char *));
+		strncpy(it, inputTrace, strlen(inputTrace));
+		opt_output = (char *)calloc(strlen(basename(it)) + 1, sizeof(char *));
+		strncpy(opt_output, basename(it), strlen(basename(it)));
 	}
 	ofilename = (char *)calloc(strlen(opt_output) + 5, sizeof(char *));
 	strncpy(ofilename, opt_output, strlen(opt_output) + 1);
@@ -108,29 +110,20 @@ end:
 	return 0;
 }
 
-static void print_usage(FILE *fp)
-{
-	fprintf(fp, "LTTNG2PRV trace converter \n\n");
-	fprintf(fp, "Usage: lttng2prv [OPTIONS] FILE\n");
-	fprintf(fp, "\tFILE                   Input trace file\n");
-	fprintf(fp, "\t-o, --output OUTPUT    Output file name\n");
-	fprintf(fp, "\t-h, --help             Show this help\n");
-	fprintf(fp, "\n");
-}
-
 static int parse_options(int argc, char **argv)
 {
 	poptContext pc;
 	int opt, ret = 0;
 
-	if (argc == 1)
-	{
-		print_usage(stdout);
-		return 1;
-	}
-
 	pc = poptGetContext(NULL, argc, (const char **) argv, long_options, 0);
 	poptReadDefaultConfig(pc, 0);
+	poptSetOtherOptionHelp(pc, "[OPTIONS...] <lttng_trace>");
+
+	if (argc == 1)
+	{
+		poptPrintHelp(pc, stderr, 0);
+		return 1;
+	}
 	
 	while ((opt = poptGetNextOpt(pc)) != -1)
 	{
@@ -144,11 +137,15 @@ static int parse_options(int argc, char **argv)
 					ret = -EINVAL;
 				}
 				break;
+			case OPT_TIMESTAMPS:
+				print_timestamps = true;
+				break;
 			case OPT_HELP:
-				print_usage(stdout);
+				poptPrintHelp(pc, stderr, 0);
 				ret = 1;
 				goto end;
 			default:
+				poptPrintHelp(pc, stderr, 0);
 				ret = -EINVAL;
 				break;
 		}
@@ -160,12 +157,12 @@ static int parse_options(int argc, char **argv)
 		ret = -EINVAL;
 	}
 
+end:
 	if (pc)
 	{
 		poptFreeContext(pc);
 	}
 
-end:
 	return ret;
 }
 
@@ -467,4 +464,10 @@ void iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp, GHashTabl
 end_iter:
 	bt_ctf_iter_destroy(iter);
 
+	if (print_timestamps)
+	{
+		// fprintf(stdout, ...) prints unwanted characters
+		printf("LTTNG2PRV_INI=%lu\n", trace_times.first_stream_timestamp);
+		printf("LTTNG2PRV_FIN=%lu\n", trace_times.last_stream_timestamp);
+	}
 }

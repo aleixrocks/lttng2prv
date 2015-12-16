@@ -14,6 +14,8 @@
 #include <fts.h>
 #include <inttypes.h>
 #include <errno.h>
+#include <stdbool.h>
+#include <libgen.h>
 #include <babeltrace/babeltrace.h>
 #include <babeltrace/context.h>
 #include <babeltrace/ctf/events.h>
@@ -21,14 +23,13 @@
 #include <babeltrace/ctf/iterator.h>
 #include <babeltrace/format.h>
 
-static void print_usage(FILE *fp);
-
 static int parse_options(int argc, char **argv);
 
 static struct poptOption long_options[] =
 {
-	{"output", 'o', POPT_ARG_STRING, NULL, OPT_OUTPUT, NULL, NULL },
-	{"help", 'h', POPT_ARG_NONE, NULL, OPT_HELP, NULL, NULL}
+	{"output", 'o', POPT_ARG_STRING, NULL, OPT_OUTPUT, "Output file name", "FILE" },
+	{"print-timestamps", 0, POPT_ARG_NONE, NULL, OPT_TIMESTAMPS, "Print trace start and end timestamps as linux epoch", NULL },
+	{ "help", 'h', POPT_ARG_NONE, NULL, OPT_HELP, "Show this help message", NULL }
 };
 
 static int traverse_trace_dir(const char *fpath, const struct stat *sb, 
