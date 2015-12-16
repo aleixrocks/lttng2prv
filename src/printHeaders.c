@@ -116,12 +116,10 @@ void printPCFHeader(FILE *fp)
 	fprintf(fp,
 			"STATES\n"
 			"0\t\tIDLE\n"
-			"1\t\tWAIT_FOR_CPU\n"
+			"1\t\tSYSCALL\n"
 			"2\t\tUSERMODE\n"
-			"3\t\tWAIT_BLOCKED\n"
-			"4\t\tSYSCALL\n"
-			"5\t\tSOFTIRQ\n"
-			"6\t\tSOFTIRQ_ACTIVE\n\n\n");
+			"3\t\tSOFT_IRQ\n"
+			"4\t\tIRQ\n\n\n");
 
 	fprintf(fp,
 			"STATES_COLOR\n"
