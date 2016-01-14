@@ -4,6 +4,7 @@
 static char *opt_output;
 const char *inputTrace;
 static bool print_timestamps = false;
+bool verbose = false;
 
 int main(int argc, char **argv)
 {
@@ -140,10 +141,9 @@ static int parse_options(int argc, char **argv)
 			case OPT_TIMESTAMPS:
 				print_timestamps = true;
 				break;
-			case OPT_HELP:
-				poptPrintHelp(pc, stderr, 0);
-				ret = 1;
-				goto end;
+      case OPT_VERBOSE:
+        verbose = true;
+        break;
 			default:
 				poptPrintHelp(pc, stderr, 0);
 				ret = -EINVAL;
@@ -367,6 +367,10 @@ void iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp, GHashTabl
 		if (strstr(event_name, "syscall_entry_") != NULL)
 		{
 			event_type = 10000000;
+      if (strstr(event_name, "syscall_entry_exit") != NULL)
+      {
+        event_value = 0;
+      }
 //			state = 4;
 		}else if (strstr(event_name, "syscall_exit_") != NULL)
 		{
@@ -443,6 +447,7 @@ void iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp, GHashTabl
 		// print only if we know the appl_id of the event
 		if ((print != 0) && (appl_id[cpu_id] != 0))
 		{
+ 			debug("%s as 2:%u:%lu:%lu:%lu:%lu:%lu:%lu%s\n", event_name, cpu_id + 1, appl_id[cpu_id], task_id, thread_id, event_time, event_type, event_value, fields);
 			fprintf(fp, "2:%u:%lu:%lu:%lu:%lu:%lu:%lu%s\n", cpu_id + 1, appl_id[cpu_id], task_id, thread_id, event_time, event_type, event_value, fields);
 		}
 		free(event_name);

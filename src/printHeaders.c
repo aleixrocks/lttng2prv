@@ -193,8 +193,10 @@ void list_events(struct bt_context *bt_ctx, FILE *fp)
 	{
 		event_id = bt_ctf_get_decl_event_id(list[i]);
 		event_name = strndup(bt_ctf_get_decl_event_name(list[i]), strlen(bt_ctf_get_decl_event_name(list[i])));
+    debug("%zu\t%s\n", event_id, event_name);
 
- 		if (strstr(event_name, "syscall_entry") != NULL) {
+ 		if (strstr(event_name, "syscall_entry") != NULL)
+    {
  			syscalls->id = event_id;
 
 			/* Careful with this call, moves memory positions and may result

@@ -28,8 +28,10 @@ static int parse_options(int argc, char **argv);
 static struct poptOption long_options[] =
 {
 	{"output", 'o', POPT_ARG_STRING, NULL, OPT_OUTPUT, "Output file name", "FILE" },
-	{"print-timestamps", 0, POPT_ARG_NONE, NULL, OPT_TIMESTAMPS, "Print trace start and end timestamps as linux epoch", NULL },
-	{ "help", 'h', POPT_ARG_NONE, NULL, OPT_HELP, "Show this help message", NULL }
+	{"print-timestamps", 0, POPT_ARG_NONE, NULL, OPT_TIMESTAMPS, "Print trace start and end timestamps as unix time", NULL },
+  {"verbose", 'v', POPT_ARG_NONE, NULL, OPT_VERBOSE, "Be verbose", NULL },
+  POPT_AUTOHELP
+ 	{NULL, 0, 0, NULL, 0}
 };
 
 static int traverse_trace_dir(const char *fpath, const struct stat *sb, 

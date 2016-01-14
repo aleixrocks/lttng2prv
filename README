@@ -42,15 +42,16 @@ To compile ctf2prv you will need:
 Compilation
 -----------
 
-	CFLAGS="-I${BABELTRACE_HOME}/include"
-	LDFLAGS="-L${BABELTRACE_HOME}/lib/.libs -L${BABELTRACE_HOME}/formats/ctf/.libs"
-	./configure
+  ./configure CFLAGS="-Wall -g -O2 -I${BABELTRACE_HOME}/include" LDFLAGS="-L${BABELTRACE_HOME}/lib/.libs -L${BABELTRACE_HOME}/formats/ctf/.libs"
 	make
 
 Usage
 -----
 
+  export LD_LIBRARY_PATH=${BABELTRACE_HOME}/lib/.libs:${BABELTRACE_HOME}/formats/ctf/.libs:${LD_LIBRARY_PATH}
+
 	ctf2prv [OPTIONS] FILE
 		FILE                   Input trace file
 		-o, --output OUTPUT    Output file name
+    -v, --verbose          Verbose output
 		-h, --help             Show this help

@@ -1,11 +1,18 @@
+#pragma once
+
 #include <inttypes.h>
+#include <stdbool.h>
+
+#define debug(...) if (verbose)	fprintf(stderr, __VA_ARGS__)
+
+extern bool verbose;
 
 enum
 {
 	OPT_NONE = 0,
 	OPT_OUTPUT,
 	OPT_TIMESTAMPS,
-	OPT_HELP
+  OPT_VERBOSE
 };
 
 struct traceTimes

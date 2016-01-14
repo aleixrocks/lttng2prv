@@ -1,2 +1,13 @@
 tags
 bin/
+Makefile.in
+aclocal.m4
+autom4te.cache/
+build/
+compile
+config.h.in
+configure
+depcomp
+install-sh
+missing
+src/Makefile.in
