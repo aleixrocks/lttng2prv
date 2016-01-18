@@ -194,7 +194,8 @@ void list_events(struct bt_context *bt_ctx, FILE *fp)
   bt_ctf_get_event_decl_list(0, bt_ctx, &list, &cnt);
   for (i = 0; i < cnt; i++)
   {
-    event_id = bt_ctf_get_decl_event_id(list[i]);
+    // Add 1 to the event_id to reserve 0 for exit
+    event_id = bt_ctf_get_decl_event_id(list[i]) + 1;
     event_name = strndup(bt_ctf_get_decl_event_name(list[i]), strlen(bt_ctf_get_decl_event_name(list[i])));
 
     if ((strstr(event_name, "syscall_entry") != NULL) && (strstr(event_name, "syscall_entry_exit") == NULL))
@@ -293,7 +294,7 @@ void list_events(struct bt_context *bt_ctx, FILE *fp)
     fprintf(fp, "%" PRIu64 "\t%s\n", netcalls->id, netcalls->name);
     netcalls = netcalls->next;
   }
-  fprintf(fp, "\n\n");
+  fprintf(fp, "0\texit\n\n\n");
 
   fprintf(fp, "EVENT_TYPE\n"
       "0\t19000000\tOthers\n"
@@ -305,7 +306,7 @@ void list_events(struct bt_context *bt_ctx, FILE *fp)
     fprintf(fp, "%" PRIu64 "\t%s\n", kerncalls->id, kerncalls->name);
     kerncalls = kerncalls->next;
   }
-  fprintf(fp, "\n\n\n");
+  fprintf(fp, "0\texit\n\n\n");
 
   fprintf(fp, "EVENT_TYPE\n");
   fprintf(fp, "0\t10000001\tSYSCALL_RET\n");

@@ -368,7 +368,9 @@ void iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp,
     event_time = bt_ctf_get_timestamp(event) - *offset - offset_stream;
 
     scope = bt_ctf_get_top_level_scope(event, BT_STREAM_EVENT_HEADER);
-    event_value = bt_ctf_get_uint64(bt_ctf_get_enum_int(bt_ctf_get_field(event, scope, "id")));
+
+    // Add 1 to the event_value to reserve 0 for exit
+    event_value = bt_ctf_get_uint64(bt_ctf_get_enum_int(bt_ctf_get_field(event, scope, "id"))) + 1;
     if (strstr(event_name, "syscall_entry_") != NULL)
     {
       event_type = 10000000;
@@ -440,9 +442,10 @@ void iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp,
     }
     
 /*****     ID for value == 65536 in extended metadata   *****/
-    if (event_value == 65535)
+    if (event_value == 65536)
     {
-      event_value = bt_ctf_get_uint64(bt_ctf_get_struct_field_index(bt_ctf_get_field(event, scope, "v"), 0));
+      // Add 1 to the new event_value to reserve 0 for exit
+      event_value = bt_ctf_get_uint64(bt_ctf_get_struct_field_index(bt_ctf_get_field(event, scope, "v"), 0)) + 1;
     }
 
     // Get Call Arguments
@@ -455,6 +458,7 @@ void iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp,
       fprintf(fp, "2:%u:%lu:%lu:%lu:%lu:%lu:%lu%s\n", cpu_id + 1, appl_id[cpu_id], task_id, thread_id, event_time, event_type, event_value, fields);
       if (event_type == 13000000)
       {
+        // print exit from network call after 1ns
         fprintf(fp, "2:%u:%lu:%lu:%lu:%lu:%lu:%d\n", cpu_id + 1, appl_id[cpu_id], task_id, thread_id, event_time + 1, event_type, 0);
       }
     }
