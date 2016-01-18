@@ -453,6 +453,10 @@ void iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp,
     if ((print != 0) && (appl_id[cpu_id] != 0))
     {
       fprintf(fp, "2:%u:%lu:%lu:%lu:%lu:%lu:%lu%s\n", cpu_id + 1, appl_id[cpu_id], task_id, thread_id, event_time, event_type, event_value, fields);
+      if (event_type == 13000000)
+      {
+        fprintf(fp, "2:%u:%lu:%lu:%lu:%lu:%lu:%d\n", cpu_id + 1, appl_id[cpu_id], task_id, thread_id, event_time + 1, event_type, 0);
+      }
     }
     free(event_name);
 
