@@ -13,7 +13,7 @@ int main(int argc, char **argv)
   int nresources;
   uint32_t nsoftirqs = 0;
   uint32_t ncpus = 0;
-  uint64_t offset;
+  size_t offset;
   char *ofilename;
 
   FILE *prv, *pcf, *row;
@@ -72,6 +72,7 @@ int main(int argc, char **argv)
   }
 
   getThreadInfo(ctx, &offset, &ncpus, tid_info_ht, tid_prv_ht, &tid_prv_l, irq_name_ht, &nsoftirqs, irq_prv_ht, &irq_prv_l);
+  debug("offset = %zu\n", offset);
   // lttng starts cpu counting from 0, paraver from 1.
   ncpus = ncpus + 1;
   nresources = ncpus + nsoftirqs + g_hash_table_size(irq_name_ht);
@@ -254,6 +255,7 @@ int bt_context_add_traces_recursive(struct bt_context *ctx,
         ret = 1;
       } else
       {
+        debug("Adding trace # : %d\n", trace_id);
         g_array_append_val(trace_ids, trace_id);
       }
       g_string_free(trace_path, TRUE);
@@ -450,7 +452,6 @@ void iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp,
     // print only if we know the appl_id of the event
     if ((print != 0) && (appl_id[cpu_id] != 0))
     {
-      debug("%s as 2:%u:%lu:%lu:%lu:%lu:%lu:%lu%s\n", event_name, cpu_id + 1, appl_id[cpu_id], task_id, thread_id, event_time, event_type, event_value, fields);
       fprintf(fp, "2:%u:%lu:%lu:%lu:%lu:%lu:%lu%s\n", cpu_id + 1, appl_id[cpu_id], task_id, thread_id, event_time, event_type, event_value, fields);
     }
     free(event_name);
@@ -475,7 +476,7 @@ end_iter:
   if (print_timestamps)
   {
     // fprintf(stdout, ...) prints unwanted characters
-    printf("LTTNG2PRV_INI=%lu\n", trace_times.first_stream_timestamp);
-    printf("LTTNG2PRV_FIN=%lu\n", trace_times.last_stream_timestamp);
+    printf("LTTNG2PRV_INI=%lu\n", (trace_times.first_stream_timestamp + *offset) / 1000000000);
+    printf("LTTNG2PRV_FIN=%lu\n", (trace_times.last_stream_timestamp + *offset) / 1000000000);
   }
 }
