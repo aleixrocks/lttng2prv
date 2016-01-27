@@ -7,6 +7,11 @@
 #include <babeltrace/ctf/callbacks.h>
 #include <babeltrace/ctf/iterator.h>
 
-int64_t bt_get_signed_int(const struct bt_definition *field);
+int64_t bt_get_signed_int(const struct bt_definition *_field);
 
-uint64_t bt_get_unsigned_int(const struct bt_definition *field);
+uint64_t bt_get_unsigned_int(const struct bt_definition *_field);
+
+/*
+ * Modeline for space only BSD KNF code style
+ */
+/* vim: set textwidth=80 colorcolumn=+0 tabstop=8 softtabstop=8 shiftwidth=8 expandtab cinoptions=\:0l1t0+0.5s(0.5su0.5sm1: */
