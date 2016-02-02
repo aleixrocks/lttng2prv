@@ -241,10 +241,7 @@ list_events(struct bt_context *bt_ctx, FILE *fp)
                         netcalls->next = (struct Events*) malloc(sizeof(struct Events));
                         netcalls = netcalls->next;
                         netcalls->next = NULL;
-                } else if ((strstr(event_name, "syscall_exit") == NULL) &&
-                    (strstr(event_name, "softirq_exit") == NULL) &&
-                    (strstr(event_name, "irq_handler_exit") == NULL) &&
-                    (strstr(event_name, "syscall_entry_exit") == NULL)) {
+                } else if (strstr(event_name, "_exit") == NULL) {
                         kerncalls->id = event_id;
                         kerncalls->name = (char *) malloc(strlen(event_name) + 1);
                         strncpy(kerncalls->name, event_name, strlen(event_name) + 1);
