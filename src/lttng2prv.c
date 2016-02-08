@@ -26,6 +26,7 @@ main(int argc, char **argv)
         GHashTable *irq_prv_ht = g_hash_table_new(g_direct_hash, g_direct_equal);
         GList *irq_prv_l = NULL;
         GHashTable *arg_types_ht = g_hash_table_new(g_str_hash, g_str_equal);
+        GHashTable *lost_events_ht = g_hash_table_new(g_direct_hash, g_direct_equal);
 
         ret = parse_options(argc, argv);
         if (ret < 0) {
@@ -70,7 +71,8 @@ main(int argc, char **argv)
         }
 
         getThreadInfo(ctx, &offset, &ncpus, tid_info_ht, tid_prv_ht,
-            &tid_prv_l, irq_name_ht, &nsoftirqs, irq_prv_ht, &irq_prv_l);
+            &tid_prv_l, irq_name_ht, &nsoftirqs, irq_prv_ht, &irq_prv_l,
+            lost_events_ht);
         debug("offset = %zu\n", offset);
         /* lttng starts cpu counting from 0, paraver from 1 */
         ncpus = ncpus + 1;
@@ -87,7 +89,7 @@ main(int argc, char **argv)
          * get listed properly.
         */
         iter_trace(ctx, &offset, prv, tid_info_ht, tid_prv_ht, irq_name_ht,
-            irq_prv_ht, ncpus, nsoftirqs, arg_types_ht);
+            irq_prv_ht, ncpus, nsoftirqs, arg_types_ht, lost_events_ht);
         list_events(ctx, pcf);
 
 end:
@@ -155,7 +157,6 @@ parse_options(int argc, char **argv)
                 ret = -EINVAL;
         }
 
-end:
         if (pc) {
                 poptFreeContext(pc);
         }
@@ -269,7 +270,7 @@ void
 iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp,
     GHashTable *tid_info_ht, GHashTable *tid_prv_ht, GHashTable *irq_name_ht,
     GHashTable *irq_prv_ht, const uint32_t ncpus, const uint32_t nsoftirqs,
-    GHashTable *arg_types_ht)
+    GHashTable *arg_types_ht, GHashTable *lost_events_ht)
 {
         struct bt_ctf_iter *iter;
         struct bt_iter_pos begin_pos;
@@ -280,17 +281,19 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp,
         unsigned int nresources = ncpus + nsoftirqs +
             g_hash_table_size(irq_name_ht);
         /* independent appl_id for each resource (CPU or IRQ) */
-        uint64_t appl_id[nresources];
-        uint64_t task_id, thread_id, event_time;
-        uint32_t cpu_id, irq_id;
-        uint64_t event_type, event_value, offset_stream, begin_time, end_time;
-        unsigned int state;
+        uint64_t appl_id[nresources], prev_appl_id = 0;
+        uint64_t task_id, thread_id, event_time, prev_event_time = 0;
+        uint32_t cpu_id, irq_id, prev_cpu_id = 0;
+        uint64_t event_type, event_value, offset_stream;//, begin_time, end_time;
+//        unsigned int state;
         char *event_name;
         uint32_t systemTID, prvTID, swapper;
 
         char fields[256];
 
         short int print = 0;
+
+        void *lostEvents = NULL;
 
         begin_pos.type = BT_SEEK_BEGIN;
         iter = bt_ctf_iter_create(bt_ctx, &begin_pos, NULL);
@@ -454,6 +457,18 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp,
                 fields[0] = '\0';
                 getArgValue(event, event_type, arg_types_ht, &fields[0]);
 
+                /*
+                 * Prints lost events if found assigned to the same application
+                 * and CPU as the last recorded event.
+                 */
+                if ((lostEvents = g_hash_table_lookup(lost_events_ht, GINT_TO_POINTER(bt_ctf_get_timestamp(event))))) {
+                        fprintf(fp, "2:%u:%lu:1:1:%lu:99999999:%d\n",
+                            prev_cpu_id + 1, prev_appl_id,
+                            prev_event_time, GPOINTER_TO_INT(lostEvents));
+                        fprintf(fp, "2:%u:%lu:1:1:%lu:99999999:0\n",
+                            prev_cpu_id + 1, prev_appl_id, event_time);
+                }
+
                 /* print only if we know the appl_id of the event */
                 if ((print != 0) && (appl_id[cpu_id] != 0)) {
                         fprintf(fp, "2:%u:%lu:%lu:%lu:%lu:%lu:%lu%s\n",
@@ -466,6 +481,9 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp,
                                     event_time + 1, event_type, 0);
                         }
                 }
+                prev_event_time = event_time;
+                prev_cpu_id = cpu_id;
+                prev_appl_id = appl_id[cpu_id];
                 free(event_name);
 
 

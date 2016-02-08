@@ -28,7 +28,7 @@ void
 getThreadInfo(struct bt_context *ctx, uint64_t *offset, uint32_t *ncpus,
     GHashTable *tid_info_ht, GHashTable *tid_prv_ht, GList **tid_prv_l,
     GHashTable *irq_name_ht, uint32_t *nsoftirqs, GHashTable *irq_prv_ht,
-    GList **irq_prv_l)
+    GList **irq_prv_l, GHashTable *lost_events_ht)
 {
         uint32_t ncpus_cmp = 0;
         gint tid;
@@ -160,6 +160,12 @@ getThreadInfo(struct bt_context *ctx, uint64_t *offset, uint32_t *ncpus,
                                     GINT_TO_POINTER(tid));
                                 irqprv++;
                         }
+                }
+
+                if (bt_ctf_get_lost_events_count > 0) {
+                        g_hash_table_insert(lost_events_ht,
+                            GINT_TO_POINTER(bt_ctf_get_timestamp(event)),
+                            GINT_TO_POINTER(bt_ctf_get_lost_events_count(iter)));
                 }
 
                 ret = bt_iter_next(bt_ctf_get_iter(iter));

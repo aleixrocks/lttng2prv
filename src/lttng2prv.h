@@ -50,7 +50,7 @@ enum bt_cb_ret handle_exit_syscall(struct bt_ctf_event *_call_data,
 void getThreadInfo(struct bt_context *_ctx, uint64_t *_offset, uint32_t *_ncpus,
     GHashTable *_tid_info_ht, GHashTable *_tid_prv_ht, GList **_tid_prv_l,
     GHashTable *_irq_name_ht, uint32_t *_nsoftirqs,
-    GHashTable *_irq_prv_ht, GList **_irq_prv_l);
+    GHashTable *_irq_prv_ht, GList **_irq_prv_l, GHashTable *_lost_events_ht);
 
 void printPRVHeader(struct bt_context *_ctx, uint64_t *_offset, FILE *_fp,
     GHashTable *_tid_info_ht, int _nresources);
@@ -64,7 +64,7 @@ void printPCFHeader(FILE *_fp);
 void iter_trace(struct bt_context *_bt_ctx, uint64_t *_offset, FILE *_fp,
     GHashTable *_tid_info_ht, GHashTable *_tid_prv_ht, GHashTable *_irq_name_ht,
     GHashTable *_irq_prv_ht, const uint32_t _ncpus, const uint32_t _nsoftirqs,
-    GHashTable *_arg_types_ht);
+    GHashTable *_arg_types_ht, GHashTable *_lost_events_ht);
 
 void rmsubstr(char *_dest, char *_torm);
 
