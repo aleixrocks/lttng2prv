@@ -479,22 +479,39 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp,
                  * and CPU as the last recorded event.
                  */
                 if ((lostEvents = g_hash_table_lookup(lost_events_ht, GINT_TO_POINTER(bt_ctf_get_timestamp(event))))) {
+                        /* Use tasks instead of applications
                         fprintf(fp, "2:%u:%lu:1:1:%lu:99999999:%d\n",
                             prev_cpu_id + 1, prev_appl_id,
                             prev_event_time, GPOINTER_TO_INT(lostEvents));
                         fprintf(fp, "2:%u:%lu:1:1:%lu:99999999:0\n",
                             prev_cpu_id + 1, prev_appl_id, event_time);
+                        */
+                        fprintf(fp, "2:%u:1:%lu:1:%lu:99999999:%d\n",
+                            prev_cpu_id + 1, prev_appl_id,
+                            prev_event_time, GPOINTER_TO_INT(lostEvents));
+                        fprintf(fp, "2:%u:1:%lu:1:%lu:99999999:0\n",
+                            prev_cpu_id + 1, prev_appl_id, event_time);
                 }
 
                 /* print only if we know the appl_id of the event */
                 if ((print != 0) && (appl_id[cpu_id] != 0)) {
+                        /* Use tasks instead of applications
                         fprintf(fp, "2:%u:%lu:%lu:%lu:%lu:20000000:%u:%lu:%lu%s\n",
                             cpu_id + 1, appl_id[cpu_id], task_id, thread_id,
                             event_time, state, event_type, event_value, fields);
+                        */
+                        fprintf(fp, "2:%u:%lu:%lu:%lu:%lu:20000000:%u:%lu:%lu%s\n",
+                            cpu_id + 1, task_id, appl_id[cpu_id], thread_id,
+                            event_time, state, event_type, event_value, fields);
                         if (event_type == 10300000) {
                                 /* print exit from network call after 1ns */
+                                /* Use tasks instead of applications
                                 fprintf(fp, "2:%u:%lu:%lu:%lu:%lu:20000000:0:%lu:%d\n",
                                 cpu_id + 1, appl_id[cpu_id], task_id, thread_id,
+                                    event_time + 1, event_type, 0);
+                                */
+                                fprintf(fp, "2:%u:%lu:%lu:%lu:%lu:20000000:0:%lu:%d\n",
+                                cpu_id + 1, task_id, appl_id[cpu_id], thread_id,
                                     event_time + 1, event_type, 0);
                         }
                 }
