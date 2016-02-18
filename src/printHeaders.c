@@ -175,6 +175,7 @@ list_events(struct bt_context *bt_ctx, FILE *fp)
         struct Events *irqhandler;
         struct Events *netcalls_root;
         struct Events *netcalls;
+        struct Events *remove;
 
         syscalls_root = (struct Events *) malloc(sizeof(struct Events));
         syscalls_root->next = NULL;
@@ -249,7 +250,18 @@ list_events(struct bt_context *bt_ctx, FILE *fp)
                         kerncalls = kerncalls->next;
                         kerncalls->next = NULL;
                 }
+                free(event_name);
         }
+
+        fprintf(fp, "EVENT_TYPE\n"
+            "0\t20000000\tSTATUS\n"
+            "VALUES\n"
+            "0\tIDLE\n"
+            "1\tSYSCALL\n"
+            "2\tUSERMODE\n"
+            "3\tSOFT_IRQ\n"
+            "4\tIRQ\n"
+            "5\tNETWORK\n\n\n");
  
         fprintf(fp, "EVENT_TYPE\n"
             "0\t10000000\tSystem Call\n"
@@ -258,41 +270,49 @@ list_events(struct bt_context *bt_ctx, FILE *fp)
         syscalls = syscalls_root;
         while(syscalls->next != NULL) {
                 fprintf(fp, "%" PRIu64 "\t%s\n", syscalls->id, syscalls->name);
+                remove = syscalls;
                 syscalls = syscalls->next;
+                free(remove->name);
         }
         fprintf(fp, "0\texit\n\n\n");
 
         fprintf(fp, "EVENT_TYPE\n"
-            "0\t10100000\tSOFTIRQ\n"
+            "0\t10100000\tSoft IRQ\n"
             "VALUES\n");
 
         softirqs = softirqs_root;
         while(softirqs->next != NULL) {
                 fprintf(fp, "%" PRIu64 "\t%s\n", softirqs->id, softirqs->name);
+                remove = softirqs;
                 softirqs = softirqs->next;
+                free(remove->name);
         }
         fprintf(fp, "0\texit\n\n\n");
 
         fprintf(fp, "EVENT_TYPE\n"
-            "0\t10200000\tIRQ HANDLER\n"
+            "0\t10200000\tIRQ Handler\n"
             "VALUES\n");
 
         irqhandler = irqhandler_root;
         while(irqhandler->next != NULL) {
                 fprintf(fp, "%" PRIu64 "\t%s\n",
                     irqhandler->id, irqhandler->name);
+                remove = irqhandler;
                 irqhandler = irqhandler->next;
+                free(remove->name);
         }
         fprintf(fp, "0\texit\n\n\n");
 
         fprintf(fp, "EVENT_TYPE\n"
-            "0\t10300000\tNETWORK CALLS\n"
+            "0\t10300000\tNetwork Calls\n"
             "VALUES\n");
 
         netcalls = netcalls_root;
         while(netcalls->next != NULL) {
                 fprintf(fp, "%" PRIu64 "\t%s\n", netcalls->id, netcalls->name);
+                remove = netcalls;
                 netcalls = netcalls->next;
+                free(remove->name);
         }
         fprintf(fp, "0\texit\n\n\n");
 
@@ -304,7 +324,9 @@ list_events(struct bt_context *bt_ctx, FILE *fp)
         while(kerncalls->next != NULL) {
                 fprintf(fp, "%" PRIu64 "\t%s\n",
                     kerncalls->id, kerncalls->name);
+                remove = kerncalls;
                 kerncalls = kerncalls->next;
+                free(remove->name);
         }
         fprintf(fp, "0\texit\n\n\n");
 

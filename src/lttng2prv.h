@@ -79,6 +79,8 @@ void getArgValue(struct bt_ctf_event *_event, uint64_t _event_type,
 
 void fillArgTypes(GHashTable *_arg_types_ht);
 
+void key_destroy_func(gpointer _key);
+
 /*
  * Modeline for space only BSD KNF code style
  */

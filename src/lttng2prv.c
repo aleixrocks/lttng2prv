@@ -25,7 +25,9 @@ main(int argc, char **argv)
         GHashTable *irq_name_ht = g_hash_table_new(g_direct_hash, g_direct_equal);
         GHashTable *irq_prv_ht = g_hash_table_new(g_direct_hash, g_direct_equal);
         GList *irq_prv_l = NULL;
-        GHashTable *arg_types_ht = g_hash_table_new(g_str_hash, g_str_equal);
+//        GHashTable *arg_types_ht = g_hash_table_new(g_str_hash, g_str_equal);
+        GHashTable *arg_types_ht = g_hash_table_new_full(
+            g_str_hash, g_str_equal, (GDestroyNotify) key_destroy_func, NULL);
         GHashTable *lost_events_ht = g_hash_table_new(g_direct_hash, g_direct_equal);
 
         ret = parse_options(argc, argv);
@@ -113,6 +115,12 @@ end:
         fclose(row);
 
         return 0;
+}
+
+void
+key_destroy_func(gpointer key)
+{
+        g_free(key);
 }
 
 static int
@@ -285,7 +293,7 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp,
         uint64_t task_id, thread_id, event_time, prev_event_time = 0;
         uint32_t cpu_id, irq_id, prev_cpu_id = 0;
         uint64_t event_type, event_value, offset_stream;//, begin_time, end_time;
-//        unsigned int state;
+        unsigned int state;
         char *event_name;
         uint32_t systemTID, prvTID, swapper;
 
@@ -375,6 +383,7 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp,
                         bt_ctf_get_field(event, scope, "id"))) + 1;
                 if (strstr(event_name, "syscall_entry_") != NULL) {
                         event_type = 10000000;
+                        state = 1;
                         if (strstr(event_name, "syscall_entry_exit") != NULL) {
                                 event_value = 0;
                         }
@@ -382,12 +391,15 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp,
                 } else if (strstr(event_name, "syscall_exit_") != NULL) {
                         event_type = 10000000;
                         event_value = 0;
+                        state = 0;
                         //      state = 2;
                 } else if (strstr(event_name, "irq_handler_") != NULL) {
                         event_type = 10200000;
+                        state = 4;
                         //appl_id = 1;
                         if (strcmp(event_name, "irq_handler_exit") == 0) {
                                 event_value = 0;
+                                state = 0;
                         }
                         scope = bt_ctf_get_top_level_scope(event,
                             BT_EVENT_FIELDS);
@@ -407,11 +419,13 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp,
                         cpu_id = irq_id;
                 } else if (strstr(event_name, "softirq_") != NULL) {
                         event_type = 10100000;
+                        state = 3;
                         //appl_id = 1;
                         if (strcmp(event_name, "softirq_raise") == 0) {
                                 print = 0;
                         } else if (strcmp(event_name, "softirq_exit") == 0) {
                                 event_value = 0;
+                                state = 0;
                         }
                         scope = bt_ctf_get_top_level_scope(event, BT_EVENT_FIELDS);
                         irq_id = ncpus - 1 + bt_get_unsigned_int(
@@ -427,8 +441,10 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp,
                 } else if ((strstr(event_name, "netif_") != NULL) ||
                             (strstr(event_name, "net_dev_") != NULL)) {
                         event_type = 10300000;
+                        state = 5;
                 } else {
                         event_type = 10900000;
+                        state = 2;
                         if ((strcmp(event_name, "sched_process_exit") == 0) ||
                             (strcmp(event_name, "hrtimer_expire_exit") == 0) ||
                             (strcmp(event_name, "timer_expire_exit") == 0) ||
@@ -442,6 +458,7 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp,
                             (strcmp(event_name, "ext4_direct_IO_exit") == 0) ||
                             (strcmp(event_name, "ext4_sync_file_exit") == 0)) {
                                 event_value = 0;
+                                state = 0;
                         }
                 }
 
@@ -471,12 +488,12 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp,
 
                 /* print only if we know the appl_id of the event */
                 if ((print != 0) && (appl_id[cpu_id] != 0)) {
-                        fprintf(fp, "2:%u:%lu:%lu:%lu:%lu:%lu:%lu%s\n",
+                        fprintf(fp, "2:%u:%lu:%lu:%lu:%lu:20000000:%u:%lu:%lu%s\n",
                             cpu_id + 1, appl_id[cpu_id], task_id, thread_id,
-                            event_time, event_type, event_value, fields);
+                            event_time, state, event_type, event_value, fields);
                         if (event_type == 10300000) {
                                 /* print exit from network call after 1ns */
-                                fprintf(fp, "2:%u:%lu:%lu:%lu:%lu:%lu:%d\n",
+                                fprintf(fp, "2:%u:%lu:%lu:%lu:%lu:20000000:0:%lu:%d\n",
                                 cpu_id + 1, appl_id[cpu_id], task_id, thread_id,
                                     event_time + 1, event_type, 0);
                         }
