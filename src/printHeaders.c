@@ -259,12 +259,13 @@ list_events(struct bt_context *bt_ctx, FILE *fp)
         fprintf(fp, "EVENT_TYPE\n"
             "0\t20000000\tSTATUS\n"
             "VALUES\n"
-            "0\tIDLE\n"
+            "0\tUSERMODE\n"
             "1\tSYSCALL\n"
-            "2\tUSERMODE\n"
-            "3\tSOFT_IRQ\n"
-            "4\tIRQ\n"
-            "5\tNETWORK\n\n\n");
+            "2\tSOFT_IRQ\n"
+            "3\tIRQ\n"
+            "4\tNETWORK\n"
+            "5\tWAIT_CPU\n"
+            "6\tWAIT_BLOCK\n\n\n");
  
         fprintf(fp, "EVENT_TYPE\n"
             "0\t10000000\tSystem Call\n"
@@ -276,6 +277,7 @@ list_events(struct bt_context *bt_ctx, FILE *fp)
                 remove = syscalls;
                 syscalls = syscalls->next;
                 free(remove->name);
+                free(remove);
         }
         fprintf(fp, "0\texit\n\n\n");
 
@@ -289,6 +291,7 @@ list_events(struct bt_context *bt_ctx, FILE *fp)
                 remove = softirqs;
                 softirqs = softirqs->next;
                 free(remove->name);
+                free(remove);
         }
         fprintf(fp, "0\texit\n\n\n");
 
@@ -303,6 +306,7 @@ list_events(struct bt_context *bt_ctx, FILE *fp)
                 remove = irqhandler;
                 irqhandler = irqhandler->next;
                 free(remove->name);
+                free(remove);
         }
         fprintf(fp, "0\texit\n\n\n");
 
@@ -316,6 +320,7 @@ list_events(struct bt_context *bt_ctx, FILE *fp)
                 remove = netcalls;
                 netcalls = netcalls->next;
                 free(remove->name);
+                free(remove);
         }
         fprintf(fp, "0\texit\n\n\n");
 
@@ -330,6 +335,7 @@ list_events(struct bt_context *bt_ctx, FILE *fp)
                 remove = kerncalls;
                 kerncalls = kerncalls->next;
                 free(remove->name);
+                free(remove);
         }
         fprintf(fp, "0\texit\n\n\n");
 
@@ -358,14 +364,16 @@ list_events(struct bt_context *bt_ctx, FILE *fp)
         fprintf(fp, "0\t10000014\tSYSCALL_TIMEOUT_MSECS\n");
         fprintf(fp, "0\t99999999\tLost Events\n");
 
-        free(syscalls_root);
+//        free(syscalls_root);
         free(syscalls);
-        free(kerncalls_root);
+//        free(kerncalls_root);
         free(kerncalls);
-        free(softirqs_root);
+//        free(softirqs_root);
         free(softirqs);
-        free(irqhandler_root);
+//        free(irqhandler_root);
         free(irqhandler);
+//        free(netcalls_root);
+        free(netcalls);
 }
 
 /*

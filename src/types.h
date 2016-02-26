@@ -15,6 +15,17 @@ enum
         OPT_VERBOSE
 };
 
+enum
+{
+        STATE_USERMODE = 0,
+        STATE_SYSCALL,
+        STATE_SOFTIRQ,
+        STATE_IRQ,
+        STATE_NETWORK,
+        STATE_WAIT_CPU,
+        STATE_WAIT_BLOCK
+};
+
 struct traceTimes
 {
         uint64_t first_stream_timestamp;

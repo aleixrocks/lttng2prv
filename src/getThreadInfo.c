@@ -46,6 +46,7 @@ getThreadInfo(struct bt_context *ctx, uint64_t *offset, uint32_t *ncpus,
         uint64_t timestamp_begin;
         uint64_t timestamp_end;
 
+
         trace_times.first_stream_timestamp = 0;
         trace_times.last_stream_timestamp = 0;
         *offset = 0;
@@ -101,8 +102,7 @@ getThreadInfo(struct bt_context *ctx, uint64_t *offset, uint32_t *ncpus,
 
                         /* Insert thread info into hash table */
                         if (g_hash_table_insert(
-                                tid_info_ht, GINT_TO_POINTER(tid),
-                                g_strdup(name))) {
+                                tid_info_ht, GINT_TO_POINTER(tid), g_strdup(name))) {
 
                                 g_hash_table_insert(tid_prv_ht,
                                     GINT_TO_POINTER(tid),
@@ -150,8 +150,7 @@ getThreadInfo(struct bt_context *ctx, uint64_t *offset, uint32_t *ncpus,
                             (strlen(bt_ctf_get_string(bt_ctf_get_field(event, scope, "_name"))) + 1 ));
                         strcpy(irqname, bt_ctf_get_string(bt_ctf_get_field(event, scope, "_name")));
                         if (g_hash_table_insert(
-                                irq_name_ht, GINT_TO_POINTER(tid), 
-                                g_strdup(irqname))) {
+                                irq_name_ht, GINT_TO_POINTER(tid), irqname)) {
 
                                 g_hash_table_insert(irq_prv_ht,
                                     GINT_TO_POINTER(tid),

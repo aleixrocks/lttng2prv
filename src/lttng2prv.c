@@ -383,23 +383,21 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp,
                         bt_ctf_get_field(event, scope, "id"))) + 1;
                 if (strstr(event_name, "syscall_entry_") != NULL) {
                         event_type = 10000000;
-                        state = 1;
+                        state = STATE_SYSCALL;
                         if (strstr(event_name, "syscall_entry_exit") != NULL) {
                                 event_value = 0;
                         }
-                        //      state = 4;
                 } else if (strstr(event_name, "syscall_exit_") != NULL) {
                         event_type = 10000000;
                         event_value = 0;
-                        state = 0;
-                        //      state = 2;
+                        state = STATE_USERMODE;
                 } else if (strstr(event_name, "irq_handler_") != NULL) {
                         event_type = 10200000;
-                        state = 4;
+                        state = STATE_IRQ;
                         //appl_id = 1;
                         if (strcmp(event_name, "irq_handler_exit") == 0) {
                                 event_value = 0;
-                                state = 0;
+                                state = STATE_USERMODE;
                         }
                         scope = bt_ctf_get_top_level_scope(event,
                             BT_EVENT_FIELDS);
@@ -409,6 +407,7 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp,
                                 GPOINTER_TO_INT(
                                     g_hash_table_lookup(
                                         irq_prv_ht, GINT_TO_POINTER(irq_id))) - 1;
+                        debug("%d, %d\n", nresources, irq_id);
                         /* assign the same thread_id of the calling process
                          * to the irq position
                          */
@@ -419,13 +418,13 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp,
                         cpu_id = irq_id;
                 } else if (strstr(event_name, "softirq_") != NULL) {
                         event_type = 10100000;
-                        state = 3;
+                        state = STATE_SOFTIRQ;
                         //appl_id = 1;
                         if (strcmp(event_name, "softirq_raise") == 0) {
                                 print = 0;
                         } else if (strcmp(event_name, "softirq_exit") == 0) {
                                 event_value = 0;
-                                state = 0;
+                                state = STATE_USERMODE;
                         }
                         scope = bt_ctf_get_top_level_scope(event, BT_EVENT_FIELDS);
                         irq_id = ncpus - 1 + bt_get_unsigned_int(
@@ -441,10 +440,43 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp,
                 } else if ((strstr(event_name, "netif_") != NULL) ||
                             (strstr(event_name, "net_dev_") != NULL)) {
                         event_type = 10300000;
-                        state = 5;
+                        state = STATE_NETWORK;
+                } else if (strcmp(event_name, "sched_switch") == 0) {
+                        event_type = 10900000;
+                        state = STATE_WAIT_BLOCK;
+                        scope = bt_ctf_get_top_level_scope(event, BT_EVENT_FIELDS);
+                        systemTID = bt_get_signed_int(
+                        bt_ctf_get_field(event, scope, "_prev_tid"));
+                        prvTID = GPOINTER_TO_INT(
+                            g_hash_table_lookup(
+                                tid_prv_ht, GINT_TO_POINTER(systemTID)));
+                        if (systemTID == 0) {
+                                prvTID = swapper;
+                        }
+                        fprintf(fp, "2:%u:%lu:%u:%lu:%lu:20000000:%u\n",
+                            cpu_id + 1, task_id, prvTID, thread_id,
+                            event_time, state);
+
+                        state = STATE_USERMODE;
+                } else if (strcmp(event_name, "sched_wakeup") == 0) {
+                        event_type = 10900000;
+                        state = STATE_WAIT_CPU;
+                        scope = bt_ctf_get_top_level_scope(event, BT_EVENT_FIELDS);
+                        systemTID = bt_get_signed_int(
+                            bt_ctf_get_field(event, scope, "_tid"));
+                        prvTID = GPOINTER_TO_INT(
+                        g_hash_table_lookup(
+                            tid_prv_ht, GINT_TO_POINTER(systemTID)));
+                        if (systemTID == 0) {
+                                prvTID = swapper;
+                        }
+                        fprintf(fp, "2:%u:%lu:%u:%lu:%lu:20000000:%u\n",
+                            cpu_id + 1, task_id, prvTID,
+                            thread_id, event_time, state);
+                        state = STATE_USERMODE;
                 } else {
                         event_type = 10900000;
-                        state = 2;
+                        state = STATE_USERMODE;
                         if ((strcmp(event_name, "sched_process_exit") == 0) ||
                             (strcmp(event_name, "hrtimer_expire_exit") == 0) ||
                             (strcmp(event_name, "timer_expire_exit") == 0) ||
@@ -457,13 +489,14 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp,
                             (strcmp(event_name, "ext4_fallocate_exit") == 0) ||
                             (strcmp(event_name, "ext4_direct_IO_exit") == 0) ||
                             (strcmp(event_name, "ext4_sync_file_exit") == 0)) {
+//                        if (strstr(event_name, "_exit") != 0) {
                                 event_value = 0;
-                                state = 0;
+                                state = STATE_USERMODE;
                         }
                 }
 
                 /* ID for value == 65536 in extended metadata */
-                if (event_value == 65536) {
+                if (event_value == 32) {
                         // Add 1 to the new event_value to reserve 0 for exit
                         event_value = bt_ctf_get_uint64(
                             bt_ctf_get_struct_field_index(
@@ -500,9 +533,12 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp,
                             cpu_id + 1, appl_id[cpu_id], task_id, thread_id,
                             event_time, state, event_type, event_value, fields);
                         */
-                        fprintf(fp, "2:%u:%lu:%lu:%lu:%lu:20000000:%u:%lu:%lu%s\n",
-                            cpu_id + 1, task_id, appl_id[cpu_id], thread_id,
-                            event_time, state, event_type, event_value, fields);
+                        fprintf(fp, 
+                            "2:%u:%lu:%lu:%lu:%lu:20000000:%u:%lu:%lu%s\n", 
+                            cpu_id + 1, task_id, appl_id[cpu_id],
+                            thread_id, event_time, state, event_type,
+                            event_value, fields);
+
                         if (event_type == 10300000) {
                                 /* print exit from network call after 1ns */
                                 /* Use tasks instead of applications
