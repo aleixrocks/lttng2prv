@@ -294,12 +294,14 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp,
         uint32_t cpu_id, irq_id, prev_cpu_id = 0;
         uint64_t event_type, event_value, offset_stream;//, begin_time, end_time;
         unsigned int state;
+        uint64_t prev_state;
         char *event_name;
         uint32_t systemTID, prvTID, swapper;
 
         char fields[256];
 
         short int print = 0;
+        short int print_state = 0;
 
         void *lostEvents = NULL;
 
@@ -321,6 +323,7 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp,
 
         while ((event = bt_ctf_iter_read_event_flags(iter, &flags)) != NULL) {
                 print = 1;
+                print_state = 1;
                 scope = bt_ctf_get_top_level_scope(event,
                     BT_STREAM_PACKET_CONTEXT);
                 cpu_id = bt_get_unsigned_int(bt_ctf_get_field(event, scope,
@@ -416,6 +419,7 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp,
                          * to properly print the prv line
                          */
                         cpu_id = irq_id;
+                        print_state = 0;
                 } else if (strstr(event_name, "softirq_") != NULL) {
                         event_type = 10100000;
                         state = STATE_SOFTIRQ;
@@ -437,13 +441,13 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp,
                          * to properly print the prv line
                          */
                         cpu_id = irq_id;
+                        print_state = 0;
                 } else if ((strstr(event_name, "netif_") != NULL) ||
                             (strstr(event_name, "net_dev_") != NULL)) {
                         event_type = 10300000;
                         state = STATE_NETWORK;
                 } else if (strcmp(event_name, "sched_switch") == 0) {
                         event_type = 10900000;
-                        state = STATE_WAIT_BLOCK;
                         scope = bt_ctf_get_top_level_scope(event, BT_EVENT_FIELDS);
                         systemTID = bt_get_signed_int(
                         bt_ctf_get_field(event, scope, "_prev_tid"));
@@ -453,6 +457,15 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp,
                         if (systemTID == 0) {
                                 prvTID = swapper;
                         }
+
+                        prev_state = bt_get_signed_int(
+                            bt_ctf_get_field(event, scope, "_prev_state"));
+                        if (prev_state == 1) {
+                                state = STATE_WAIT_BLOCK;
+                        } else {
+                                state = STATE_USERMODE;
+                        }
+
                         fprintf(fp, "2:%u:%lu:%u:%lu:%lu:20000000:%u\n",
                             cpu_id + 1, task_id, prvTID, thread_id,
                             event_time, state);
@@ -470,10 +483,28 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp,
                         if (systemTID == 0) {
                                 prvTID = swapper;
                         }
+                        fprintf(fp, "2:%u:%lu:%u:%lu:%lu:20000000:%d:20000000:%u\n",
+                            cpu_id + 1, task_id, prvTID,
+                            thread_id, event_time, STATE_USERMODE, state);
+                        state = STATE_USERMODE;
+                        print_state = 0;
+                } else if (strcmp(event_name, "sched_process_fork") == 0) {
+                        event_type = 10900000;
+                        state = STATE_WAIT_CPU;
+                        scope = bt_ctf_get_top_level_scope(event, BT_EVENT_FIELDS);
+                        systemTID = bt_get_signed_int(
+                            bt_ctf_get_field(event, scope, "_child_tid"));
+                        prvTID = GPOINTER_TO_INT(
+                        g_hash_table_lookup(
+                            tid_prv_ht, GINT_TO_POINTER(systemTID)));
+                        if (systemTID == 0) {
+                                prvTID = swapper;
+                        }
                         fprintf(fp, "2:%u:%lu:%u:%lu:%lu:20000000:%u\n",
                             cpu_id + 1, task_id, prvTID,
                             thread_id, event_time, state);
                         state = STATE_USERMODE;
+                        print_state = 0;
                 } else {
                         event_type = 10900000;
                         state = STATE_USERMODE;
@@ -493,6 +524,7 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp,
                                 event_value = 0;
                                 state = STATE_USERMODE;
                         }
+                        print_state = 0;
                 }
 
                 /* ID for value == 65536 in extended metadata */
@@ -533,11 +565,19 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp,
                             cpu_id + 1, appl_id[cpu_id], task_id, thread_id,
                             event_time, state, event_type, event_value, fields);
                         */
+                        if (print_state == 1) {
                         fprintf(fp, 
                             "2:%u:%lu:%lu:%lu:%lu:20000000:%u:%lu:%lu%s\n", 
                             cpu_id + 1, task_id, appl_id[cpu_id],
                             thread_id, event_time, state, event_type,
                             event_value, fields);
+                        } else {
+                                fprintf(fp, 
+                                    "2:%u:%lu:%lu:%lu:%lu:%lu:%lu%s\n", 
+                                    cpu_id + 1, task_id, appl_id[cpu_id],
+                                    thread_id, event_time, event_type,
+                                    event_value, fields);
+                        }
 
                         if (event_type == 10300000) {
                                 /* print exit from network call after 1ns */
@@ -546,7 +586,7 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp,
                                 cpu_id + 1, appl_id[cpu_id], task_id, thread_id,
                                     event_time + 1, event_type, 0);
                                 */
-                                fprintf(fp, "2:%u:%lu:%lu:%lu:%lu:20000000:0:%lu:%d\n",
+                                fprintf(fp, "2:%u:%lu:%lu:%lu:%lu:10300000:0:%lu:%d\n",
                                 cpu_id + 1, task_id, appl_id[cpu_id], thread_id,
                                     event_time + 1, event_type, 0);
                         }
