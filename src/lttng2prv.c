@@ -19,13 +19,12 @@ main(int argc, char **argv)
 
         FILE *prv, *pcf, *row;
 
-        GHashTable *tid_info_ht = g_hash_table_new(g_direct_hash, g_direct_equal);
+        GHashTable *tid_info_ht = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL, key_destroy_func);
         GHashTable *tid_prv_ht = g_hash_table_new(g_direct_hash, g_direct_equal);
         GList *tid_prv_l = NULL;
-        GHashTable *irq_name_ht = g_hash_table_new(g_direct_hash, g_direct_equal);
+        GHashTable *irq_name_ht = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL, key_destroy_func);
         GHashTable *irq_prv_ht = g_hash_table_new(g_direct_hash, g_direct_equal);
         GList *irq_prv_l = NULL;
-//        GHashTable *arg_types_ht = g_hash_table_new(g_str_hash, g_str_equal);
         GHashTable *arg_types_ht = g_hash_table_new_full(
             g_str_hash, g_str_equal, (GDestroyNotify) key_destroy_func, NULL);
         GHashTable *lost_events_ht = g_hash_table_new(g_direct_hash, g_direct_equal);
@@ -419,7 +418,6 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp,
                          * to properly print the prv line
                          */
                         cpu_id = irq_id;
-                        print_state = 0;
                 } else if (strstr(event_name, "softirq_") != NULL) {
                         event_type = 10100000;
                         state = STATE_SOFTIRQ;
@@ -441,11 +439,11 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp,
                          * to properly print the prv line
                          */
                         cpu_id = irq_id;
-                        print_state = 0;
                 } else if ((strstr(event_name, "netif_") != NULL) ||
                             (strstr(event_name, "net_dev_") != NULL)) {
                         event_type = 10300000;
                         state = STATE_NETWORK;
+                        print_state = 0;
                 } else if (strcmp(event_name, "sched_switch") == 0) {
                         event_type = 10900000;
                         scope = bt_ctf_get_top_level_scope(event, BT_EVENT_FIELDS);
@@ -460,10 +458,10 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp,
 
                         prev_state = bt_get_signed_int(
                             bt_ctf_get_field(event, scope, "_prev_state"));
-                        if (prev_state == 1) {
-                                state = STATE_WAIT_BLOCK;
+                        if (prev_state == 0) {
+                                state = STATE_WAIT_CPU;
                         } else {
-                                state = STATE_USERMODE;
+                                state = STATE_WAIT_BLOCK;
                         }
 
                         fprintf(fp, "2:%u:%lu:%u:%lu:%lu:20000000:%u\n",
