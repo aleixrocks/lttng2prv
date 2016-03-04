@@ -288,9 +288,9 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp,
         unsigned int nresources = ncpus + nsoftirqs +
             g_hash_table_size(irq_name_ht);
         /* independent appl_id for each resource (CPU or IRQ) */
-        uint64_t appl_id[nresources], prev_appl_id = 0;
-        uint64_t task_id, thread_id, event_time, prev_event_time = 0;
-        uint32_t cpu_id, irq_id, prev_cpu_id = 0;
+        uint64_t appl_id[nresources];//, prev_appl_id = 0;
+        uint64_t task_id, thread_id, event_time;//, prev_event_time = 0;
+        uint32_t cpu_id, irq_id;//, prev_cpu_id = 0;
         uint64_t event_type, event_value, offset_stream;//, begin_time, end_time;
         unsigned int state;
         uint64_t prev_state;
@@ -464,8 +464,8 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp,
                                 state = STATE_WAIT_BLOCK;
                         }
 
-                        fprintf(fp, "2:%u:%lu:%u:%lu:%lu:20000000:%u\n",
-                            cpu_id + 1, task_id, prvTID, thread_id,
+                        fprintf(fp, "2:%u:%u:%lu:%lu:%lu:20000000:%u\n",
+                            cpu_id + 1, prvTID, task_id, thread_id,
                             event_time, state);
 
                         state = STATE_USERMODE;
@@ -481,8 +481,8 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp,
                         if (systemTID == 0) {
                                 prvTID = swapper;
                         }
-                        fprintf(fp, "2:%u:%lu:%u:%lu:%lu:20000000:%d:20000000:%u\n",
-                            cpu_id + 1, task_id, prvTID,
+                        fprintf(fp, "2:%u:%u:%lu:%lu:%lu:20000000:%d:20000000:%u\n",
+                            cpu_id + 1, prvTID, task_id,
                             thread_id, event_time, STATE_USERMODE, state);
                         state = STATE_USERMODE;
                         print_state = 0;
@@ -498,8 +498,8 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp,
                         if (systemTID == 0) {
                                 prvTID = swapper;
                         }
-                        fprintf(fp, "2:%u:%lu:%u:%lu:%lu:20000000:%u\n",
-                            cpu_id + 1, task_id, prvTID,
+                        fprintf(fp, "2:%u:%u:%lu:%lu:%lu:20000000:%u\n",
+                            cpu_id + 1, prvTID, task_id,
                             thread_id, event_time, state);
                         state = STATE_USERMODE;
                         print_state = 0;
@@ -526,7 +526,7 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp,
                 }
 
                 /* ID for value == 65536 in extended metadata */
-                if (event_value == 32) {
+                if (event_value == 65536) {
                         // Add 1 to the new event_value to reserve 0 for exit
                         event_value = bt_ctf_get_uint64(
                             bt_ctf_get_struct_field_index(
@@ -542,27 +542,45 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp,
                  * and CPU as the last recorded event.
                  */
                 if ((lostEvents = g_hash_table_lookup(lost_events_ht, GINT_TO_POINTER(bt_ctf_get_timestamp(event))))) {
-                        /* Use tasks instead of applications
+                        /* Test */
+                        fprintf(fp, 
+                            "2:%u:%lu:1:1:%lu:99999999:%d\n",
+                            cpu_id + 1, appl_id[cpu_id],
+                            event_time, GPOINTER_TO_INT(lostEvents));
+
+                        /* Orig
                         fprintf(fp, "2:%u:%lu:1:1:%lu:99999999:%d\n",
                             prev_cpu_id + 1, prev_appl_id,
                             prev_event_time, GPOINTER_TO_INT(lostEvents));
                         fprintf(fp, "2:%u:%lu:1:1:%lu:99999999:0\n",
                             prev_cpu_id + 1, prev_appl_id, event_time);
                         */
+
+                        /* Use tasks instead of applications */
+                        /*
                         fprintf(fp, "2:%u:1:%lu:1:%lu:99999999:%d\n",
                             prev_cpu_id + 1, prev_appl_id,
                             prev_event_time, GPOINTER_TO_INT(lostEvents));
                         fprintf(fp, "2:%u:1:%lu:1:%lu:99999999:0\n",
                             prev_cpu_id + 1, prev_appl_id, event_time);
+                        */
                 }
 
                 /* print only if we know the appl_id of the event */
                 if ((print != 0) && (appl_id[cpu_id] != 0)) {
-                        /* Use tasks instead of applications
-                        fprintf(fp, "2:%u:%lu:%lu:%lu:%lu:20000000:%u:%lu:%lu%s\n",
-                            cpu_id + 1, appl_id[cpu_id], task_id, thread_id,
-                            event_time, state, event_type, event_value, fields);
-                        */
+                        if (print_state == 1) {
+                                fprintf(fp, "2:%u:%lu:%lu:%lu:%lu:20000000:%u:%lu:%lu%s\n", 
+                                    cpu_id + 1, appl_id[cpu_id], task_id, thread_id, 
+                                    event_time, state, event_type, event_value, fields);
+                        } else {
+                                fprintf(fp, 
+                                    "2:%u:%lu:%lu:%lu:%lu:%lu:%lu%s\n", 
+                                    cpu_id + 1, appl_id[cpu_id], task_id,
+                                    thread_id, event_time, event_type,
+                                    event_value, fields);
+                        }
+                        /* Use tasks instead of applications */
+                        /*
                         if (print_state == 1) {
                         fprintf(fp, 
                             "2:%u:%lu:%lu:%lu:%lu:20000000:%u:%lu:%lu%s\n", 
@@ -576,6 +594,7 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp,
                                     thread_id, event_time, event_type,
                                     event_value, fields);
                         }
+                        */
 
                         if (event_type == 10300000) {
                                 /* print exit from network call after 1ns */
@@ -584,14 +603,15 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp,
                                 cpu_id + 1, appl_id[cpu_id], task_id, thread_id,
                                     event_time + 1, event_type, 0);
                                 */
-                                fprintf(fp, "2:%u:%lu:%lu:%lu:%lu:10300000:0:%lu:%d\n",
-                                cpu_id + 1, task_id, appl_id[cpu_id], thread_id,
-                                    event_time + 1, event_type, 0);
+                                fprintf(fp,
+                                    "2:%u:%lu:%lu:%lu:%lu:10300000:0:%lu:%d\n",
+                                    cpu_id + 1, task_id, appl_id[cpu_id],
+                                    thread_id, event_time + 1, event_type, 0);
                         }
                 }
-                prev_event_time = event_time;
-                prev_cpu_id = cpu_id;
-                prev_appl_id = appl_id[cpu_id];
+                //prev_event_time = event_time;
+                //prev_cpu_id = cpu_id;
+                //prev_appl_id = appl_id[cpu_id];
                 free(event_name);
 
 
