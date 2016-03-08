@@ -5,6 +5,7 @@ static char *opt_output;
 const char *inputTrace;
 static bool print_timestamps = false;
 bool verbose = false;
+unsigned int id_size = 32;
 
 int
 main(int argc, char **argv)
@@ -15,9 +16,9 @@ main(int argc, char **argv)
         uint32_t nsoftirqs = 0;
         uint32_t ncpus = 0;
         size_t offset;
-        char *ofilename;
+        char *ofilename, *metadatafn;
 
-        FILE *prv, *pcf, *row;
+        FILE *prv, *pcf, *row, *metadatafp;
 
         GHashTable *tid_info_ht = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL, key_destroy_func);
         GHashTable *tid_prv_ht = g_hash_table_new(g_direct_hash, g_direct_equal);
@@ -46,6 +47,24 @@ main(int argc, char **argv)
         }
         ofilename = (char *)calloc(strlen(opt_output) + 5, sizeof(char *));
         strncpy(ofilename, opt_output, strlen(opt_output) + 1);
+
+        metadatafn = (char *)calloc(strlen(inputTrace) + 9, sizeof(char *));
+        strncat(metadatafn, inputTrace, strlen(inputTrace));
+        strncat(metadatafn, "/metadata", strlen("/metadata"));
+
+        char *tmp = malloc(512 * sizeof(char *));
+        if (!(metadatafp = fopen(metadatafn, "r"))) {
+                fprintf(stderr, "[error] Couldn't open metadata file.\n");
+                goto end;
+        }
+
+        while (fgets(tmp, 512, metadatafp) != NULL) {
+                if (strstr(tmp, "event.header := struct event_header_large")) {
+                        debug("Extended header.\n");
+                        id_size = 65536;
+                }
+        }
+        fclose(metadatafp);
 
         strcat(ofilename, ".prv");
         prv = fopen(ofilename, "w");
@@ -409,7 +428,6 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp,
                                 GPOINTER_TO_INT(
                                     g_hash_table_lookup(
                                         irq_prv_ht, GINT_TO_POINTER(irq_id))) - 1;
-                        debug("%d, %d\n", nresources, irq_id);
                         /* assign the same thread_id of the calling process
                          * to the irq position
                          */
@@ -526,7 +544,8 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp,
                 }
 
                 /* ID for value == 65536 in extended metadata */
-                if (event_value == 65536) {
+                if (event_value == id_size) {
+//                if (event_value == 65536) {
                         // Add 1 to the new event_value to reserve 0 for exit
                         event_value = bt_ctf_get_uint64(
                             bt_ctf_get_struct_field_index(
