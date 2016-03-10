@@ -75,6 +75,7 @@ printROW(FILE *fp, GHashTable *tid_info_ht, GList *tid_prv_l,
 {
         gpointer value;
         int rcount = 0;
+        GList *list;
 
         fprintf(fp, "LEVEL CPU SIZE %d\n",
             ncpus + nsoftirqs + g_hash_table_size(irq_name_ht));
@@ -97,13 +98,24 @@ printROW(FILE *fp, GHashTable *tid_info_ht, GList *tid_prv_l,
         }
         fprintf(fp, "\n\n");
 
+        list = tid_prv_l;
         fprintf(fp, "LEVEL APPL SIZE %d\n", g_hash_table_size(tid_info_ht));
         //fprintf(fp, "LEVEL TASK SIZE %d\n", g_hash_table_size(tid_info_ht));
-        while (tid_prv_l != NULL) {
-                value = g_hash_table_lookup(tid_info_ht, tid_prv_l->data);
+        while (list != NULL) {
+                value = g_hash_table_lookup(tid_info_ht, list->data);
                 fprintf(fp, "%s\n", (const char *)value);
-                tid_prv_l = tid_prv_l->next;
+                list = list->next;
         }
+
+        list = tid_prv_l;
+        fprintf(fp, "\nLEVEL THREAD SIZE %d\n", g_hash_table_size(tid_info_ht));
+        while (list != NULL) {
+                value = g_hash_table_lookup(tid_info_ht, list->data);
+                fprintf(fp, "%s\n", (const char *)value);
+                list = list->next;
+        }
+
+        g_list_free(list);
 }
 
 void
