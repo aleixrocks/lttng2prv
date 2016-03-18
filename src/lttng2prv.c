@@ -15,7 +15,7 @@ main(int argc, char **argv)
         int nresources;
         uint32_t nsoftirqs = 0;
         uint32_t ncpus = 0;
-        size_t offset;
+        size_t trace_offset;
         char *ofilename, *metadatafn;
 
         FILE *prv, *pcf, *row, *metadatafp;
@@ -63,6 +63,11 @@ main(int argc, char **argv)
                         debug("Extended header.\n");
                         id_size = 65536;
                 }
+                if (strstr(tmp, "offset = ")) {
+                        strtok(tmp, "=");
+                        trace_offset = strtoul(strtok(NULL, "="), NULL, 10);
+                        debug("Trace offset = %lu\n", trace_offset);
+                }
         }
         fclose(metadatafp);
 
@@ -90,14 +95,14 @@ main(int argc, char **argv)
                 goto end;
         }
 
-        getThreadInfo(ctx, &offset, &ncpus, tid_info_ht, tid_prv_ht,
+        getThreadInfo(ctx, &ncpus, tid_info_ht, tid_prv_ht,
             &tid_prv_l, irq_name_ht, &nsoftirqs, irq_prv_ht, &irq_prv_l,
             lost_events_ht);
-        debug("offset = %zu\n", offset);
+        //debug("offset = %zu\n", offset);
         /* lttng starts cpu counting from 0, paraver from 1 */
         ncpus = ncpus + 1;
         nresources = ncpus + nsoftirqs + g_hash_table_size(irq_name_ht);
-        printPRVHeader(ctx, &offset, prv, tid_info_ht, nresources);
+        printPRVHeader(ctx, prv, tid_info_ht, nresources);
         printPCFHeader(pcf);
         printROW(row, tid_info_ht, tid_prv_l, irq_name_ht, irq_prv_l,
             ncpus, nsoftirqs);
@@ -108,7 +113,7 @@ main(int argc, char **argv)
          * syscall_entry_ before traversing the trace and the events don't
          * get listed properly.
         */
-        iter_trace(ctx, &offset, prv, tid_info_ht, tid_prv_ht, irq_name_ht,
+        iter_trace(ctx, &trace_offset, prv, tid_info_ht, tid_prv_ht, irq_name_ht,
             irq_prv_ht, ncpus, nsoftirqs, arg_types_ht, lost_events_ht);
         list_events(ctx, pcf);
 
@@ -293,7 +298,7 @@ bt_context_add_traces_recursive(struct bt_context *ctx,
  * Iterates through all events of the trace
  */
 void
-iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp,
+iter_trace(struct bt_context *bt_ctx, uint64_t *trace_offset, FILE *fp,
     GHashTable *tid_info_ht, GHashTable *tid_prv_ht, GHashTable *irq_name_ht,
     GHashTable *irq_prv_ht, const uint32_t ncpus, const uint32_t nsoftirqs,
     GHashTable *arg_types_ht, GHashTable *lost_events_ht)
@@ -392,8 +397,7 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *offset, FILE *fp,
                 // scope = bt_ctf_get_top_level_scope(event,
                 //    BT_STREAM_PACKET_CONTEXT);
 
-                event_time = bt_ctf_get_timestamp(event) -
-                    *offset - offset_stream;
+                event_time = bt_ctf_get_timestamp(event) - offset_stream;
 
                 scope = bt_ctf_get_top_level_scope(event,
                     BT_STREAM_EVENT_HEADER);
@@ -653,9 +657,9 @@ end_iter:
         if (print_timestamps) {
                 // fprintf(stdout, ...) prints unwanted characters
                 printf("LTTNG2PRV_INI=%lu\n",
-                    (trace_times.first_stream_timestamp + *offset) / 1000000000);
+                    (trace_times.first_stream_timestamp) / 1000000000);
                 printf("LTTNG2PRV_FIN=%lu\n",
-                    (trace_times.last_stream_timestamp + *offset) / 1000000000);
+                    (trace_times.last_stream_timestamp) / 1000000000);
         }
 }
 

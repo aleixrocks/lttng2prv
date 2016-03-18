@@ -47,12 +47,12 @@ int bt_context_add_traces_recursive(struct bt_context *_ctx, const char *_path,
 enum bt_cb_ret handle_exit_syscall(struct bt_ctf_event *_call_data,
     void *_private_data);
 
-void getThreadInfo(struct bt_context *_ctx, uint64_t *_offset, uint32_t *_ncpus,
+void getThreadInfo(struct bt_context *_ctx, uint32_t *_ncpus,
     GHashTable *_tid_info_ht, GHashTable *_tid_prv_ht, GList **_tid_prv_l,
     GHashTable *_irq_name_ht, uint32_t *_nsoftirqs,
     GHashTable *_irq_prv_ht, GList **_irq_prv_l, GHashTable *_lost_events_ht);
 
-void printPRVHeader(struct bt_context *_ctx, uint64_t *_offset, FILE *_fp,
+void printPRVHeader(struct bt_context *_ctx, FILE *_fp,
     GHashTable *_tid_info_ht, int _nresources);
 
 void printROW(FILE *_fp, GHashTable *_tid_info_ht, GList *_tid_prv_l,

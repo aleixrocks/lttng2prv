@@ -27,10 +27,10 @@ rmsubstr(char *dest, char *torm)
 }
 
 void
-printPRVHeader(struct bt_context *ctx, uint64_t *offset, FILE *fp,
+printPRVHeader(struct bt_context *ctx, FILE *fp,
     GHashTable *tid_info_ht, int nresources)
 {
-        *offset -= trace_times.first_stream_timestamp;
+        //*offset -= trace_times.first_stream_timestamp;
 
         time_t now = time(0);
         struct tm *local = localtime(&now);

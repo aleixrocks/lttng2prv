@@ -25,7 +25,7 @@ error:
 }
 
 void
-getThreadInfo(struct bt_context *ctx, uint64_t *offset, uint32_t *ncpus,
+getThreadInfo(struct bt_context *ctx, uint32_t *ncpus,
     GHashTable *tid_info_ht, GHashTable *tid_prv_ht, GList **tid_prv_l,
     GHashTable *irq_name_ht, uint32_t *nsoftirqs, GHashTable *irq_prv_ht,
     GList **irq_prv_l, GHashTable *lost_events_ht)
@@ -49,7 +49,7 @@ getThreadInfo(struct bt_context *ctx, uint64_t *offset, uint32_t *ncpus,
 
         trace_times.first_stream_timestamp = 0;
         trace_times.last_stream_timestamp = 0;
-        *offset = 0;
+//        *offset = 0;
 
         const struct bt_definition *scope;
 
@@ -86,9 +86,9 @@ getThreadInfo(struct bt_context *ctx, uint64_t *offset, uint32_t *ncpus,
                         trace_times.last_stream_timestamp = timestamp_end;
                 }
 
-                if (*offset > bt_ctf_get_timestamp(event) || *offset == 0) {
-                        *offset = bt_ctf_get_timestamp(event);
-                }
+//                if (*offset > bt_ctf_get_timestamp(event) || *offset == 0) {
+//                        *offset = bt_ctf_get_timestamp(event);
+//                }
 
                 /* Get thread names */
                 if (strstr(
