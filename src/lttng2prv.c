@@ -70,6 +70,8 @@ main(int argc, char **argv)
                 }
         }
         fclose(metadatafp);
+        free(tmp);
+        free(metadatafn);
 
         strcat(ofilename, ".prv");
         prv = fopen(ofilename, "w");
