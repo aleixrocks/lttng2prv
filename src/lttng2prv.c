@@ -327,6 +327,7 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *trace_offset, FILE *fp,
         short int print_state = 0;
 
         void *lostEvents = NULL;
+        size_t lost_ini, lost_fi;
 
         begin_pos.type = BT_SEEK_BEGIN;
         iter = bt_ctf_iter_create(bt_ctx, &begin_pos, NULL);
@@ -566,10 +567,31 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *trace_offset, FILE *fp,
                  */
                 if ((lostEvents = g_hash_table_lookup(lost_events_ht, GINT_TO_POINTER(bt_ctf_get_timestamp(event))))) {
                         /* Test */
-                        fprintf(fp, 
-                            "2:%u:%lu:1:1:%lu:99999999:%d\n",
-                            cpu_id + 1, appl_id[cpu_id],
-                            event_time, GPOINTER_TO_INT(lostEvents));
+                        scope = bt_ctf_get_top_level_scope(event,
+                            BT_STREAM_PACKET_CONTEXT);
+                        /* Is the same as event_time
+                        lost_ini = bt_ctf_get_uint64(
+                            bt_ctf_get_field(event, scope, "timestamp_begin")) + 
+                            *trace_offset - trace_times.first_stream_timestamp;
+                        */
+                        lost_ini = event_time;
+                        lost_fi = bt_ctf_get_uint64(
+                            bt_ctf_get_field(event, scope, "timestamp_end")) +
+                            *trace_offset - trace_times.first_stream_timestamp;
+
+                        fprintf(fp,
+                            "2:%u:%lu:1:1:%" PRIu64 ":99999999:%d\n",
+                            cpu_id + 1,
+                            appl_id[cpu_id],
+                            lost_ini,
+                            GPOINTER_TO_INT(lostEvents));
+
+                        fprintf(fp,
+                            "2:%u:%lu:1:1:%" PRIu64 ":99999999:%d\n",
+                            cpu_id + 1,
+                            appl_id[cpu_id],
+                            lost_fi,
+                            0);
 
                         /* Orig
                         fprintf(fp, "2:%u:%lu:1:1:%lu:99999999:%d\n",
