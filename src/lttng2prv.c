@@ -652,7 +652,7 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *trace_offset, FILE *fp,
                                 */
                                 fprintf(fp,
                                     "2:%u:%lu:%lu:%lu:%lu:10300000:0:%lu:%d\n",
-                                    cpu_id + 1, task_id, appl_id[cpu_id],
+                                    cpu_id + 1, appl_id[cpu_id], task_id,
                                     thread_id, event_time + 1, event_type, 0);
                         }
                 }
