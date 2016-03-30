@@ -165,7 +165,7 @@ getThreadInfo(struct bt_context *ctx, uint32_t *ncpus,
                         }
                 }
 
-                if (bt_ctf_get_lost_events_count > 0) {
+                if (bt_ctf_get_lost_events_count(iter) > 0) {
                         g_hash_table_insert(lost_events_ht,
                             GINT_TO_POINTER(bt_ctf_get_timestamp(event)),
                             GINT_TO_POINTER(bt_ctf_get_lost_events_count(iter)));

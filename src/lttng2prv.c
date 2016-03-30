@@ -439,9 +439,10 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *trace_offset, FILE *fp,
                         state = STATE_USERMODE;
                 } else if (strstr(event_name, "irq_handler_") != NULL) {
                         event_type = 10200000;
+                        event_value = 1;
                         state = STATE_IRQ;
                         //appl_id = 1;
-                        if (strcmp(event_name, "irq_handler_exit") == 0) {
+                        if (strstr(event_name, "irq_handler_exit") != NULL) {
                                 event_value = 0;
                                 state = STATE_USERMODE;
                         }
@@ -463,10 +464,12 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *trace_offset, FILE *fp,
                 } else if (strstr(event_name, "softirq_") != NULL) {
                         event_type = 10100000;
                         state = STATE_SOFTIRQ;
+                        event_value = 1;
                         //appl_id = 1;
-                        if (strcmp(event_name, "softirq_raise") == 0) {
+                        if (strstr(event_name, "softirq_raise") != NULL) {
                                 print = 0;
-                        } else if (strcmp(event_name, "softirq_exit") == 0) {
+                                event_value = 2;
+                        } else if (strstr(event_name, "softirq_exit") != NULL) {
                                 event_value = 0;
                                 state = STATE_USERMODE;
                         }

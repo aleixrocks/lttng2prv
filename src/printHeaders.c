@@ -9,9 +9,11 @@
 /*
  * Removes substring torm from input string dest
  */
-void
+int
 rmsubstr(char *dest, char *torm)
 {
+        int ret = 0;
+
         if ((dest = strstr(dest, torm)) != NULL) {
                 const size_t len = strlen(torm);
                 char *copyEnd;
@@ -23,7 +25,11 @@ rmsubstr(char *dest, char *torm)
                         copyFrom = copyEnd + len;
                 }
                 memmove(dest, copyFrom, 1 + strlen(copyFrom));
+
+                ret = 1;
         }
+
+        return ret;
 }
 
 void
@@ -234,15 +240,19 @@ list_events(struct bt_context *bt_ctx, FILE *fp)
                         syscalls->next = NULL;
                 } else if ((strstr(event_name, "softirq_raise") != NULL) ||
                     (strstr(event_name, "softirq_entry") != NULL)) {
-                        softirqs->id = event_id;
-                        rmsubstr(event_name, "_entry");
+//                        softirqs->id = event_id;
+                        softirqs->id = 2;
+                        if (rmsubstr(event_name, "_entry")) {
+                                softirqs->id = 1;
+                        }
                         softirqs->name = (char *) malloc(strlen(event_name) + 1);
                         strncpy(softirqs->name, event_name, strlen(event_name) + 1);
                         softirqs->next = (struct Events*) malloc(sizeof(struct Events));
                         softirqs = softirqs->next;
                         softirqs->next = NULL;
                 } else if (strstr(event_name, "irq_handler_entry") != NULL) {
-                        irqhandler->id = event_id;
+//                        irqhandler->id = event_id;
+                        irqhandler->id = 1;
                         rmsubstr(event_name, "_entry");
                         irqhandler->name = (char *) malloc(strlen(event_name) + 1);
                         strncpy(irqhandler->name, event_name, strlen(event_name) + 1);
