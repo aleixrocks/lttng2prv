@@ -238,9 +238,13 @@ list_events(struct bt_context *bt_ctx, FILE *fp)
                         syscalls->next = (struct Events *) malloc(sizeof(struct Events));
                         syscalls = syscalls->next;
                         syscalls->next = NULL;
+                /*
+                 * For softirq and irq_handler types we manually specify the
+                 * event_value IDs instead of using the one provided by lttng.
+                 * This way we always use the same values for these events.
+                 */
                 } else if ((strstr(event_name, "softirq_raise") != NULL) ||
                     (strstr(event_name, "softirq_entry") != NULL)) {
-//                        softirqs->id = event_id;
                         softirqs->id = 2;
                         if (rmsubstr(event_name, "_entry")) {
                                 softirqs->id = 1;
@@ -251,7 +255,6 @@ list_events(struct bt_context *bt_ctx, FILE *fp)
                         softirqs = softirqs->next;
                         softirqs->next = NULL;
                 } else if (strstr(event_name, "irq_handler_entry") != NULL) {
-//                        irqhandler->id = event_id;
                         irqhandler->id = 1;
                         rmsubstr(event_name, "_entry");
                         irqhandler->name = (char *) malloc(strlen(event_name) + 1);

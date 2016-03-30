@@ -437,6 +437,11 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *trace_offset, FILE *fp,
                         event_type = 10000000;
                         event_value = 0;
                         state = STATE_USERMODE;
+                /*
+                 * For softirq and irq_handler types we manually specify the
+                 * event_value IDs instead of using the one provided by lttng.
+                 * This way we always use the same values for these events.
+                 */
                 } else if (strstr(event_name, "irq_handler_") != NULL) {
                         event_type = 10200000;
                         event_value = 1;
