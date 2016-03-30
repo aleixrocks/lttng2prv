@@ -55,7 +55,7 @@ main(int argc, char **argv)
         char *tmp = malloc(512 * sizeof(char *));
         if (!(metadatafp = fopen(metadatafn, "r"))) {
                 fprintf(stderr, "[error] Couldn't open metadata file.\n");
-                goto end;
+                goto endmeta;
         }
 
         while (fgets(tmp, 512, metadatafp) != NULL) {
@@ -74,15 +74,27 @@ main(int argc, char **argv)
         free(metadatafn);
 
         strcat(ofilename, ".prv");
-        prv = fopen(ofilename, "w");
+        if (!(prv = fopen(ofilename, "w"))) {
+                fprintf(stderr,
+                    "[error] Couldn't open trace file for writing.\n");
+                goto endprv;
+        }
 
         ofilename[strlen(opt_output)] = 0;
         strcat(ofilename, ".pcf");
-        pcf = fopen(ofilename, "w");
+        if (!(pcf = fopen(ofilename, "w"))) {
+                fprintf(stderr,
+                    "[error] Couldn't open configuration file for writing.\n");
+                goto endpcf;
+        }
 
         ofilename[strlen(opt_output)] = 0;
         strcat(ofilename, ".row");
-        row = fopen(ofilename, "w");
+        if (!(row = fopen(ofilename, "w"))) {
+                fprintf(stderr,
+                    "[error] Couldn't open names file for writing.\n");
+                goto endrow;
+        }
 
         ctx = bt_context_create();
         if (!ctx) {
@@ -132,13 +144,19 @@ end:
 
         free(ofilename);
 
-        fflush(prv);
-        fflush(pcf);
+endrow:
         fflush(row);
-        fclose(prv);
-        fclose(pcf);
         fclose(row);
 
+endpcf:
+        fflush(pcf);
+        fclose(pcf);
+
+endprv:
+        fflush(prv);
+        fclose(prv);
+
+endmeta:
         return 0;
 }
 
@@ -432,8 +450,7 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *trace_offset, FILE *fp,
                         irq_id = bt_get_signed_int(
                             bt_ctf_get_field(event, scope, "_irq"));
                         irq_id = ncpus + nsoftirqs +
-                                GPOINTER_TO_INT(
-                                    g_hash_table_lookup(
+                                GPOINTER_TO_INT(g_hash_table_lookup(
                                         irq_prv_ht, GINT_TO_POINTER(irq_id))) - 1;
                         /* assign the same thread_id of the calling process
                          * to the irq position
@@ -617,8 +634,9 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *trace_offset, FILE *fp,
                 if ((print != 0) && (appl_id[cpu_id] != 0)) {
                         if (print_state == 1) {
                                 fprintf(fp, "2:%u:%lu:%lu:%lu:%lu:20000000:%u:%lu:%lu%s\n", 
-                                    cpu_id + 1, appl_id[cpu_id], task_id, thread_id, 
-                                    event_time, state, event_type, event_value, fields);
+                                    cpu_id + 1, appl_id[cpu_id], task_id,
+                                    thread_id, event_time, state, event_type,
+                                    event_value, fields);
                         } else {
                                 fprintf(fp, 
                                     "2:%u:%lu:%lu:%lu:%lu:%lu:%lu%s\n", 
