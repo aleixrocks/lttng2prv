@@ -1,76 +1,8 @@
 /* Get all arguments from a call and print them */
 
-#define _GNU_SOURCE
-#define __USE_XOPEN_EXTENDED
-#define _XOPEN_SOURCE 500
-#include <stdio.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <stdlib.h>
-#include <popt.h>
-#include <errno.h>
-#include <fcntl.h>
 #include <glib.h>
 #include <string.h>
-#include <ftw.h>
-#include <fts.h>
-#include <inttypes.h>
-#include <errno.h>
-#include <babeltrace/babeltrace.h>
-#include <babeltrace/context.h>
 #include <babeltrace/ctf/events.h>
-#include <babeltrace/ctf/callbacks.h>
-#include <babeltrace/ctf/iterator.h>
-#include <babeltrace/format.h>
-
-#include "types.h"
-
-void
-fillArgTypes(GHashTable *arg_types_ht)
-{
-        g_hash_table_insert(arg_types_ht,
-            g_strndup("ret", 3),
-            GINT_TO_POINTER(1));
-        g_hash_table_insert(arg_types_ht,
-            g_strndup("fd", 2),
-            GINT_TO_POINTER(2));
-        g_hash_table_insert(arg_types_ht,
-            g_strndup("size", 4),
-            GINT_TO_POINTER(3));
-        g_hash_table_insert(arg_types_ht,
-            g_strndup("cmd", 3),
-            GINT_TO_POINTER(4));
-        g_hash_table_insert(arg_types_ht,
-            g_strndup("arg", 3),
-            GINT_TO_POINTER(5));
-        g_hash_table_insert(arg_types_ht,
-            g_strndup("count", 5),
-            GINT_TO_POINTER(6));
-        g_hash_table_insert(arg_types_ht,
-            g_strndup("buf", 3),
-            GINT_TO_POINTER(7));
-        g_hash_table_insert(arg_types_ht,
-            g_strndup("skbaddr", 7),
-            GINT_TO_POINTER(8));
-        g_hash_table_insert(arg_types_ht,
-            g_strndup("len", 3),
-            GINT_TO_POINTER(9));
-        g_hash_table_insert(arg_types_ht,
-            g_strndup("name", 4),
-            GINT_TO_POINTER(10));
-        g_hash_table_insert(arg_types_ht,
-            g_strndup("rc", 2),
-            GINT_TO_POINTER(11));
-        g_hash_table_insert(arg_types_ht,
-            g_strndup("ufds", 4),
-            GINT_TO_POINTER(12));
-        g_hash_table_insert(arg_types_ht,
-            g_strndup("nfds", 4),
-            GINT_TO_POINTER(13));
-        g_hash_table_insert(arg_types_ht,
-            g_strndup("timeout_msecs", 13),
-            GINT_TO_POINTER(14));
-}
 
 void
 getArgValue(struct bt_ctf_event *event, uint64_t event_type,

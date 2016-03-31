@@ -1,5 +1,38 @@
+#define _DEFAULT_SOURCE
+#define _XOPEN_SOURCE 700
+
 #include "types.h"
 #include "lttng2prv.h"
+#include "fillArgTypes.h"
+#include "listEvents.h"
+
+static int parse_options(int _argc, char **_argv);
+
+static struct poptOption long_options[] =
+{
+        {"output", 'o', POPT_ARG_STRING, NULL, OPT_OUTPUT,
+            "Output file name", "FILE" },
+        {"print-timestamps", 0, POPT_ARG_NONE, NULL, OPT_TIMESTAMPS,
+            "Print trace start and end timestamps as unix time", NULL },
+        {"verbose", 'v', POPT_ARG_NONE, NULL, OPT_VERBOSE,
+            "Be verbose", NULL },
+        POPT_AUTOHELP
+        {NULL, 0, 0, NULL, 0}
+};
+
+static int traverse_trace_dir(const char *_fpath, const struct stat *_sb,
+    int _tflag, struct FTW *_ftwbuf);
+
+static int bt_context_add_traces_recursive(struct bt_context *_ctx,
+    const char *_path, const char *_format_str,
+    void (*packet_seek)(struct bt_stream_pos *pos, size_t offset, int whence));
+
+static void iter_trace(struct bt_context *_bt_ctx, uint64_t *_offset, FILE *_fp,
+    GHashTable *_tid_info_ht, GHashTable *_tid_prv_ht, GHashTable *_irq_name_ht,
+    GHashTable *_irq_prv_ht, const uint32_t _ncpus, const uint32_t _nsoftirqs,
+    GHashTable *_arg_types_ht, GHashTable *_lost_events_ht);
+
+static void key_destroy_func(gpointer _key);
 
 static char *opt_output;
 const char *inputTrace;
@@ -129,7 +162,7 @@ main(int argc, char **argv)
         */
         iter_trace(ctx, &trace_offset, prv, tid_info_ht, tid_prv_ht, irq_name_ht,
             irq_prv_ht, ncpus, nsoftirqs, arg_types_ht, lost_events_ht);
-        list_events(ctx, pcf);
+        listEvents(ctx, pcf);
 
 end:
         bt_context_put(ctx);
@@ -160,7 +193,7 @@ endmeta:
         return 0;
 }
 
-void
+static void
 key_destroy_func(gpointer key)
 {
         g_free(key);
@@ -265,7 +298,7 @@ traverse_trace_dir(const char *fpath, const struct stat *sb, int tflag,
         return 0;
 }
 
-int
+static int
 bt_context_add_traces_recursive(struct bt_context *ctx,
     const char *path, const char *format_str,
     void (*packet_seek)(struct bt_stream_pos *pos, size_t offset, int whence))
@@ -317,7 +350,7 @@ bt_context_add_traces_recursive(struct bt_context *ctx,
 /*
  * Iterates through all events of the trace
  */
-void
+static void
 iter_trace(struct bt_context *bt_ctx, uint64_t *trace_offset, FILE *fp,
     GHashTable *tid_info_ht, GHashTable *tid_prv_ht, GHashTable *irq_name_ht,
     GHashTable *irq_prv_ht, const uint32_t ncpus, const uint32_t nsoftirqs,
