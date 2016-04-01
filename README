@@ -16,21 +16,21 @@ To compile ctf2prv you will need:
 		(Debian: gcc)
 	GNU autotools (automake >=1.10, autoconf >=2.50, autoheader >=2.50)
 		(Debian: automake, autoconf) 
-	  (make sure your system wide "automake" points to a recent version!)
+	  	(make sure your system wide "automake" points to a recent version!)
 	GNU Libtool >=2.2
 		(Debian: libtool)
 	libc6 development librairies
-	  (Debian : libc6, libc6-dev)
-	  (Fedora : glibc, glibc)
+		(Debian : libc6, libc6-dev)
+		(Fedora : glibc, glibc)
 	glib 2.22 or better development libraries
-	  (Debian : libglib2.0-0, libglib2.0-dev)
-	  (Fedora : glib2, glib2-devel)
+		(Debian : libglib2.0-0, libglib2.0-dev)
+		(Fedora : glib2, glib2-devel)
 	uuid development libraries
-	  (Debian : uuid-dev)
-	  (Fedora : uuid-devel)
+		(Debian : uuid-dev)
+		(Fedora : uuid-devel)
 	libpopt >= 1.13 development libraries
-	  (Debian : libpopt-dev)
-	  (Fedora : popt)
+		(Debian : libpopt-dev)
+		(Fedora : popt)
 	Flex >=2.5.35.
 		(Debian: flex)
 	Bison >=2.4.
@@ -41,17 +41,17 @@ To compile ctf2prv you will need:
 
 Compilation
 -----------
-
-  ./configure CFLAGS="-Wall -g -O2 -I${BABELTRACE_HOME}/include" LDFLAGS="-L${BABELTRACE_HOME}/lib/.libs -L${BABELTRACE_HOME}/formats/ctf/.libs"
+	./bootstrap
+	./configure
 	make
 
 Usage
 -----
+	Usage: lttng2prv [OPTIONS...] <lttng_trace>
+		-o, --output=FILE	Output file name
+		--print-timestamps	Print trace start and end timestamps as unix time
+		-v, --verbose		Be verbose
 
-  export LD_LIBRARY_PATH=${BABELTRACE_HOME}/lib/.libs:${BABELTRACE_HOME}/formats/ctf/.libs:${LD_LIBRARY_PATH}
-
-	ctf2prv [OPTIONS] FILE
-		FILE                   Input trace file
-		-o, --output OUTPUT    Output file name
-    -v, --verbose          Verbose output
-		-h, --help             Show this help
+	Help options:
+		-?, --help		Show this help message
+		--usage			Display brief usage message
