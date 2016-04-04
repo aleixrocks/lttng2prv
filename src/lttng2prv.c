@@ -48,7 +48,7 @@ main(int argc, char **argv)
         int nresources;
         uint32_t nsoftirqs = 0;
         uint32_t ncpus = 0;
-        size_t trace_offset;
+        size_t trace_offset = 0;
         char *ofilename, *metadatafn;
 
         FILE *prv, *pcf, *row, *metadatafp;
