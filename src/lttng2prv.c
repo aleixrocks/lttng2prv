@@ -160,8 +160,9 @@ main(int argc, char **argv)
          * syscall_entry_ before traversing the trace and the events don't
          * get listed properly.
         */
-        iter_trace(ctx, &trace_offset, prv, tid_info_ht, tid_prv_ht, irq_name_ht,
-            irq_prv_ht, ncpus, nsoftirqs, arg_types_ht, lost_events_ht);
+        iter_trace(ctx, &trace_offset, prv, tid_info_ht, tid_prv_ht,
+            irq_name_ht, irq_prv_ht, ncpus, nsoftirqs, arg_types_ht,
+            lost_events_ht);
         listEvents(ctx, pcf);
 
 end:
@@ -369,6 +370,7 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *trace_offset, FILE *fp,
         uint64_t task_id, thread_id, event_time;//, prev_event_time = 0;
         uint32_t cpu_id, irq_id;//, prev_cpu_id = 0;
         uint64_t event_type, event_value, offset_stream;//, begin_time, end_time;
+
         unsigned int state;
         uint64_t prev_state;
         char *event_name;
@@ -489,8 +491,8 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *trace_offset, FILE *fp,
                         irq_id = bt_get_signed_int(
                             bt_ctf_get_field(event, scope, "_irq"));
                         irq_id = ncpus + nsoftirqs +
-                                GPOINTER_TO_INT(g_hash_table_lookup(
-                                        irq_prv_ht, GINT_TO_POINTER(irq_id))) - 1;
+                            GPOINTER_TO_INT(g_hash_table_lookup(
+                                    irq_prv_ht, GINT_TO_POINTER(irq_id))) - 1;
                         /* assign the same thread_id of the calling process
                          * to the irq position
                          */
