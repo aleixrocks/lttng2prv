@@ -18,11 +18,11 @@ To compile ctf2prv you will need:
 		(Debian: automake, autoconf) 
 	  	(make sure your system wide "automake" points to a recent version!)
 	GNU Libtool >=2.2
-		(Debian: libtool)
+		(Debian : libtool)
 	libc6 development librairies
 		(Debian : libc6, libc6-dev)
 		(Fedora : glibc, glibc)
-	glib 2.22 or better development libraries
+	glib 2.40 or better development libraries
 		(Debian : libglib2.0-0, libglib2.0-dev)
 		(Fedora : glib2, glib2-devel)
 	uuid development libraries
@@ -32,12 +32,12 @@ To compile ctf2prv you will need:
 		(Debian : libpopt-dev)
 		(Fedora : popt)
 	Flex >=2.5.35.
-		(Debian: flex)
+		(Debian : flex)
 	Bison >=2.4.
-		(Debian: bison)
+		(Debian : bison)
 	babeltrace
-		git tree:   git://git.efficios.com/ctf.git
-		gitweb:     http://git.efficios.com/?p=ctf.git
+		git tree :   git://git.efficios.com/ctf.git
+		gitweb :     http://git.efficios.com/?p=ctf.git
 
 Compilation
 -----------
