@@ -1,7 +1,12 @@
 #pragma once
+#ifndef FILLARGTYPES_H
+#define FILLARGTYPES_H
+
 #include <glib.h>
 
 void fillArgTypes(GHashTable *_arg_types_ht);
+
+#endif
 
 /*
  * Modeline for space only BSD KNF code style

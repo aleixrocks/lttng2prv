@@ -1,3 +1,7 @@
+#pragma once
+#ifndef GETTHREADINFO_H
+#define GETTHREADINFO_H
+
 #include <glib.h>
 #include <string.h>
 #include <stdlib.h>
@@ -9,6 +13,8 @@
 int64_t bt_get_signed_int(const struct bt_definition *_field);
 
 uint64_t bt_get_unsigned_int(const struct bt_definition *_field);
+
+#endif
 
 /*
  * Modeline for space only BSD KNF code style

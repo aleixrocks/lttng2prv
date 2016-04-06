@@ -1,3 +1,7 @@
+#pragma once
+#ifndef LTTNG2PRV_H
+#define LTTNG2PRV_H
+
 #include <errno.h>
 #include <fcntl.h>
 #include <ftw.h>
@@ -31,6 +35,8 @@ int64_t bt_get_signed_int(const struct bt_definition *_field);
 
 void getArgValue(struct bt_ctf_event *_event, uint64_t _event_type,
     GHashTable *_arg_types_ht, char *_fields);
+
+#endif
 
 /*
  * Modeline for space only BSD KNF code style

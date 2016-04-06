@@ -1,4 +1,6 @@
 #pragma once
+#ifndef TYPES_H
+#define TYPES_H
 
 #include <inttypes.h>
 #include <stdbool.h>
@@ -40,6 +42,8 @@ struct Events
         char *name;
         struct Events *next;
 };
+
+#endif
 
 /*
  * Modeline for space only BSD KNF code style

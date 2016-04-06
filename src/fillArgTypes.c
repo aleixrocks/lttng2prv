@@ -47,7 +47,6 @@ fillArgTypes(GHashTable *arg_types_ht)
             GINT_TO_POINTER(14));
 }
 
-
 /*
  * Modeline for space only BSD KNF code style
  */

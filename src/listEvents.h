@@ -1,4 +1,6 @@
 #pragma once
+#ifndef LISTEVENTS_H
+#define LISTEVENTS_H
 
 #include <stdlib.h>
 #include <string.h>
@@ -8,6 +10,8 @@
 #include "types.h"
 
 void listEvents(struct bt_context *_bt_ctx, FILE *_fp);
+
+#endif
 
 /*
  * Modeline for space only BSD KNF code style

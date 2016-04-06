@@ -254,8 +254,6 @@ listEvents(struct bt_context *bt_ctx, FILE *fp)
         free(netcalls);
 }
 
-
-
 /*
  * Modeline for space only BSD KNF code style
  */
