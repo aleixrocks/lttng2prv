@@ -2,6 +2,8 @@
 #ifndef LTTNG2PRV_H
 #define LTTNG2PRV_H
 
+#define UNUSED(x) (void)(x)
+
 #include <errno.h>
 #include <fcntl.h>
 #include <ftw.h>

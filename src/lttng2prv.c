@@ -17,7 +17,7 @@ static struct poptOption long_options[] =
         {"verbose", 'v', POPT_ARG_NONE, NULL, OPT_VERBOSE,
             "Be verbose", NULL },
         POPT_AUTOHELP
-        {NULL, 0, 0, NULL, 0}
+        POPT_TABLEEND
 };
 
 static int traverse_trace_dir(const char *_fpath, const struct stat *_sb,
@@ -255,6 +255,8 @@ static int
 traverse_trace_dir(const char *fpath, const struct stat *sb, int tflag,
     struct FTW *ftwbuf)
 {
+        UNUSED(sb);
+        UNUSED(ftwbuf);
         int dirfd, metafd;
         int closeret;
 
@@ -306,7 +308,7 @@ bt_context_add_traces_recursive(struct bt_context *ctx,
 {
         GArray *trace_ids;
         int ret = 0;
-        int i;
+        unsigned int i;
 
         traversed_paths = g_ptr_array_new();
         trace_ids = g_array_new(FALSE, TRUE, sizeof(int));
@@ -357,6 +359,7 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *trace_offset, FILE *fp,
     GHashTable *irq_prv_ht, const uint32_t ncpus, const uint32_t nsoftirqs,
     GHashTable *arg_types_ht, GHashTable *lost_events_ht)
 {
+        UNUSED(tid_info_ht);
         struct bt_ctf_iter *iter;
         struct bt_iter_pos begin_pos;
         struct bt_ctf_event *event;
@@ -393,7 +396,7 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *trace_offset, FILE *fp,
         task_id = 1;
         thread_id = 1;
 
-        for (int i = 0; i < nresources; i++) {
+        for (unsigned int i = 0; i < nresources; i++) {
                 appl_id[i] = 0;
         }
 

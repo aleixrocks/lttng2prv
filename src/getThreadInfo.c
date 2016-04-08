@@ -4,7 +4,8 @@
 enum bt_cb_ret
 handle_exit_syscall(struct bt_ctf_event *call_data, void *private_data)
 {
-        const static struct bt_definition *scope;
+        UNUSED(private_data);
+        static const struct bt_definition *scope;
         uint64_t ret;
 
         scope = bt_ctf_get_top_level_scope(call_data, BT_EVENT_FIELDS);
@@ -31,7 +32,7 @@ getThreadInfo(struct bt_context *ctx, uint32_t *ncpus,
     GList **irq_prv_l, GHashTable *lost_events_ht)
 {
         uint32_t ncpus_cmp = 0;
-        gint tid;
+        uint32_t tid;
         char name[16];
         char *irqname;
 

@@ -1,3 +1,5 @@
+#define UNUSED(x) (void)(x)
+
 #include "types.h"
 #include <glib.h>
 #include <babeltrace/ctf/events.h>
@@ -6,6 +8,7 @@ void
 printPRVHeader(struct bt_context *ctx, FILE *fp,
     GHashTable *tid_info_ht, int nresources)
 {
+        UNUSED(ctx);
         //*offset -= trace_times.first_stream_timestamp;
 
         time_t now = time(0);
@@ -50,7 +53,7 @@ printROW(FILE *fp, GHashTable *tid_info_ht, GList *tid_prv_l,
     const uint32_t nsoftirqs)
 {
         gpointer value;
-        int rcount = 0;
+        uint32_t rcount = 0;
         GList *list;
 
         fprintf(fp, "LEVEL CPU SIZE %d\n",

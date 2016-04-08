@@ -2,6 +2,8 @@
 #ifndef GETTHREADINFO_H
 #define GETTHREADINFO_H
 
+#define UNUSED(x) (void)(x)
+
 #include <glib.h>
 #include <string.h>
 #include <stdlib.h>
