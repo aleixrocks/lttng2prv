@@ -72,12 +72,7 @@ getThreadInfo(struct bt_context *ctx, uint32_t *ncpus,
                 /* Get Timestamps  and offset */
                 timestamp_begin = bt_ctf_get_timestamp(event);
                 timestamp_end = bt_ctf_get_timestamp(event);
-                /*
-                timestamp_begin = bt_ctf_get_uint64(
-                    bt_ctf_get_field(event, scope, "timestamp_begin"));
-                timestamp_end = bt_ctf_get_uint64(
-                    bt_ctf_get_field(event, scope, "timestamp_end"));
-                */
+
                 if (trace_times.first_stream_timestamp > timestamp_begin ||
                     trace_times.first_stream_timestamp == 0) {
                         trace_times.first_stream_timestamp = timestamp_begin;
@@ -86,10 +81,6 @@ getThreadInfo(struct bt_context *ctx, uint32_t *ncpus,
                     trace_times.last_stream_timestamp == 0) {
                         trace_times.last_stream_timestamp = timestamp_end;
                 }
-
-//                if (*offset > bt_ctf_get_timestamp(event) || *offset == 0) {
-//                        *offset = bt_ctf_get_timestamp(event);
-//                }
 
                 /* Get thread names */
                 if (strstr(

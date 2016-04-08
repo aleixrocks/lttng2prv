@@ -242,15 +242,10 @@ listEvents(struct bt_context *bt_ctx, FILE *fp)
         fprintf(fp, "0\t10000014\tSYSCALL_TIMEOUT_MSECS\n");
         fprintf(fp, "0\t99999999\tLost Events\n");
 
-//        free(syscalls_root);
         free(syscalls);
-//        free(kerncalls_root);
         free(kerncalls);
-//        free(softirqs_root);
         free(softirqs);
-//        free(irqhandler_root);
         free(irqhandler);
-//        free(netcalls_root);
         free(netcalls);
 }
 

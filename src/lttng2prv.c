@@ -145,7 +145,7 @@ main(int argc, char **argv)
         getThreadInfo(ctx, &ncpus, tid_info_ht, tid_prv_ht,
             &tid_prv_l, irq_name_ht, &nsoftirqs, irq_prv_ht, &irq_prv_l,
             lost_events_ht);
-        //debug("offset = %zu\n", offset);
+
         /* lttng starts cpu counting from 0, paraver from 1 */
         ncpus = ncpus + 1;
         nresources = ncpus + nsoftirqs + g_hash_table_size(irq_name_ht);
@@ -369,10 +369,10 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *trace_offset, FILE *fp,
         unsigned int nresources = ncpus + nsoftirqs +
             g_hash_table_size(irq_name_ht);
         /* independent appl_id for each resource (CPU or IRQ) */
-        uint64_t appl_id[nresources];//, prev_appl_id = 0;
-        uint64_t task_id, thread_id, event_time;//, prev_event_time = 0;
-        uint32_t cpu_id, irq_id;//, prev_cpu_id = 0;
-        uint64_t event_type, event_value, offset_stream;//, begin_time, end_time;
+        uint64_t appl_id[nresources];
+        uint64_t task_id, thread_id, event_time;
+        uint32_t cpu_id, irq_id;
+        uint64_t event_type, event_value, offset_stream;
 
         unsigned int state;
         uint64_t prev_state;
@@ -615,7 +615,6 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *trace_offset, FILE *fp,
 
                 /* ID for value == 65536 in extended metadata */
                 if (event_value == id_size) {
-//                if (event_value == 65536) {
                         // Add 1 to the new event_value to reserve 0 for exit
                         event_value = bt_ctf_get_uint64(
                             bt_ctf_get_struct_field_index(
@@ -631,14 +630,8 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *trace_offset, FILE *fp,
                  * and CPU as the last recorded event.
                  */
                 if ((lostEvents = g_hash_table_lookup(lost_events_ht, GINT_TO_POINTER(bt_ctf_get_timestamp(event))))) {
-                        /* Test */
                         scope = bt_ctf_get_top_level_scope(event,
                             BT_STREAM_PACKET_CONTEXT);
-                        /* Is the same as event_time
-                        lost_ini = bt_ctf_get_uint64(
-                            bt_ctf_get_field(event, scope, "timestamp_begin")) + 
-                            *trace_offset - trace_times.first_stream_timestamp;
-                        */
                         lost_ini = event_time;
                         lost_fi = bt_ctf_get_uint64(
                             bt_ctf_get_field(event, scope, "timestamp_end")) +
@@ -657,23 +650,6 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *trace_offset, FILE *fp,
                             appl_id[cpu_id],
                             lost_fi,
                             0);
-
-                        /* Orig
-                        fprintf(fp, "2:%u:%lu:1:1:%lu:99999999:%d\n",
-                            prev_cpu_id + 1, prev_appl_id,
-                            prev_event_time, GPOINTER_TO_INT(lostEvents));
-                        fprintf(fp, "2:%u:%lu:1:1:%lu:99999999:0\n",
-                            prev_cpu_id + 1, prev_appl_id, event_time);
-                        */
-
-                        /* Use tasks instead of applications */
-                        /*
-                        fprintf(fp, "2:%u:1:%lu:1:%lu:99999999:%d\n",
-                            prev_cpu_id + 1, prev_appl_id,
-                            prev_event_time, GPOINTER_TO_INT(lostEvents));
-                        fprintf(fp, "2:%u:1:%lu:1:%lu:99999999:0\n",
-                            prev_cpu_id + 1, prev_appl_id, event_time);
-                        */
                 }
 
                 /* print only if we know the appl_id of the event */
@@ -690,39 +666,14 @@ iter_trace(struct bt_context *bt_ctx, uint64_t *trace_offset, FILE *fp,
                                     thread_id, event_time, event_type,
                                     event_value, fields);
                         }
-                        /* Use tasks instead of applications */
-                        /*
-                        if (print_state == 1) {
-                        fprintf(fp, 
-                            "2:%u:%lu:%lu:%lu:%lu:20000000:%u:%lu:%lu%s\n", 
-                            cpu_id + 1, task_id, appl_id[cpu_id],
-                            thread_id, event_time, state, event_type,
-                            event_value, fields);
-                        } else {
-                                fprintf(fp, 
-                                    "2:%u:%lu:%lu:%lu:%lu:%lu:%lu%s\n", 
-                                    cpu_id + 1, task_id, appl_id[cpu_id],
-                                    thread_id, event_time, event_type,
-                                    event_value, fields);
-                        }
-                        */
 
                         if (event_type == 10300000) {
-                                /* print exit from network call after 1ns */
-                                /* Use tasks instead of applications
-                                fprintf(fp, "2:%u:%lu:%lu:%lu:%lu:20000000:0:%lu:%d\n",
-                                cpu_id + 1, appl_id[cpu_id], task_id, thread_id,
-                                    event_time + 1, event_type, 0);
-                                */
                                 fprintf(fp,
                                     "2:%u:%lu:%lu:%lu:%lu:%lu:%d\n",
                                     cpu_id + 1, appl_id[cpu_id], task_id,
                                     thread_id, event_time + 1, event_type, 0);
                         }
                 }
-                //prev_event_time = event_time;
-                //prev_cpu_id = cpu_id;
-                //prev_appl_id = appl_id[cpu_id];
                 free(event_name);
 
 

@@ -9,7 +9,6 @@ printPRVHeader(struct bt_context *ctx, FILE *fp,
     GHashTable *tid_info_ht, int nresources)
 {
         UNUSED(ctx);
-        //*offset -= trace_times.first_stream_timestamp;
 
         time_t now = time(0);
         struct tm *local = localtime(&now);
@@ -31,14 +30,12 @@ printPRVHeader(struct bt_context *ctx, FILE *fp,
             ftime,
             nresources,
             g_hash_table_size(tid_info_ht) /* nAppl */
-            //1 // Temporarily we use tasks, not appls
         );
 
         GHashTableIter ht_iter;
         gpointer key, value;
         g_hash_table_iter_init(&ht_iter, tid_info_ht);
 
-        //fprintf(fp, "%d(", g_hash_table_size(tid_info_ht));
         while (g_hash_table_iter_next(&ht_iter, &key, &value)) {
                 fprintf(fp, "1(1:1):");
         }
@@ -79,7 +76,6 @@ printROW(FILE *fp, GHashTable *tid_info_ht, GList *tid_prv_l,
 
         list = tid_prv_l;
         fprintf(fp, "LEVEL APPL SIZE %d\n", g_hash_table_size(tid_info_ht));
-        //fprintf(fp, "LEVEL TASK SIZE %d\n", g_hash_table_size(tid_info_ht));
         while (list != NULL) {
                 value = g_hash_table_lookup(tid_info_ht, list->data);
                 fprintf(fp, "%s\n", (const char *)value);
