@@ -14,7 +14,7 @@ To compile ctf2prv you will need:
 
 	gcc 3.2 or better
 		(Debian: gcc)
-	GNU autotools (automake >=1.10, autoconf >=2.50, autoheader >=2.50)
+	GNU autotools (automake >=1.10, autoconf >=2.63, autoheader >=2.63)
 		(Debian: automake, autoconf) 
 	  	(make sure your system wide "automake" points to a recent version!)
 	GNU Libtool >=2.2
